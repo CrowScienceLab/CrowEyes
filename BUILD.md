@@ -1,4 +1,4 @@
-# CrowEyes Image Viewer 1.0 빌드
+# CrowEyes Image Viewer 1.2 빌드
 
 ## 개발 환경 실행
 
@@ -6,20 +6,20 @@ Windows 11의 PowerShell 또는 명령 프롬프트에서 다음 명령을 실�
 
 ```bat
 py -3 -m pip install -r requirements.txt
-py -3 CrowEyes_Image_Viewer_1.0.py
+py -3 CrowEyes_Image_Viewer_1.2.py
 ```
 
 Anaconda 환경에서는 다음 명령으로 실행할 수도 있습니다.
 
 ```bat
 python -m pip install -r requirements.txt
-python CrowEyes_Image_Viewer_1.0.py
+python CrowEyes_Image_Viewer_1.2.py
 ```
 
 이미지나 폴더 경로를 첫 번째 인자로 전달할 수도 있습니다.
 
 ```bat
-py -3 CrowEyes_Image_Viewer_1.0.py "C:\Images\sample.png"
+py -3 CrowEyes_Image_Viewer_1.2.py "C:\Images\sample.png"
 ```
 
 `ttkbootstrap`이 설치되어 있지 않으면 프로그램이 설치 명령을 안내하는 오류 대화상자를 표시합니다.
@@ -35,6 +35,8 @@ py -3 CrowEyes_Image_Viewer_1.0.py "C:\Images\sample.png"
 
 ```bat
 python tools\check_theme_contrast.py
+python tools\check_playlist_navigation.py
+python tools\check_slideshow_toolbar.py
 ```
 
 ## 입력 및 탐색 동작
@@ -43,12 +45,13 @@ python tools\check_theme_contrast.py
 - 이미지 영역의 마우스 휠은 기본적으로 `위=이전`, `아래=다음` 이미지를 엽니다.
 - `환경설정 > 마우스 휠 동작`에서 `확대 / 축소`로 변경할 수 있습니다.
 - 툴바, 키보드, 마우스 휠 확대·축소는 항상 이미지 영역 중앙을 기준으로 합니다.
-- `도움말 > 프로그램 정보`에서 `2026년 8월 · v1.0 · Crow Science Lab`을 확인할 수 있습니다.
+- `도움말 > 프로그램 정보`에서 `2026년 8월 · v1.2 · Crow Science Lab`을 확인할 수 있습니다.
 
 ## PyInstaller onedir 빌드
 
 개발·배포 검증에는 문제 추적이 쉽고 실행 안정성이 높은 `onedir` 방식을 기본으로 사용합니다.
-Windows 실행 파일 아이콘은 약 51KB인 `assets\icons\croweyes.ico` 한 개만 포함합니다.
+Windows 실행 파일 아이콘 `assets\icons\croweyes.ico`와 상단 브랜드용 투명 PNG
+`assets\icons\croweyes-eye-logo.png`(약 38KB)를 포함합니다.
 아이콘을 다시 만들 때는 다음 명령을 실행합니다.
 
 ```bat
@@ -67,7 +70,7 @@ py -3 -m PyInstaller ^
   --name CrowEyes ^
   --icon assets\icons\croweyes.ico ^
   --collect-data ttkbootstrap ^
-  CrowEyes_Image_Viewer_1.0.py
+  CrowEyes_Image_Viewer_1.2.py
 ```
 
 현재 개발 PC의 Anaconda 패키지를 직접 수집하면 불필요한 과학 계산 라이브러리가 포함됩니다.

@@ -11,6 +11,7 @@ msgcat = python_root / 'Library' / 'lib' / 'tcl8' / '8.5' / 'msgcat-1.6.1.tm'
 
 datas = [(str(msgcat), 'tcl8\\8.5')] if msgcat.is_file() else []
 datas += collect_data_files('ttkbootstrap')
+datas += [(str(Path('assets/icons/croweyes-eye-logo.png').resolve()), 'assets/icons')]
 
 runtime_dlls = (
     'libmpdec-4.dll', 'libcrypto-3-x64.dll', 'liblzma.dll', 'LIBBZ2.dll',
@@ -24,7 +25,7 @@ binaries = [
 
 
 a = Analysis(
-    ['CrowEyes_Image_Viewer_1.0.py'],
+    ['CrowEyes_Image_Viewer_1.2.py'],
     pathex=[],
     binaries=binaries,
     datas=datas,

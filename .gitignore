@@ -10,3 +10,11 @@ release/*.zip
 *.log
 .idea/
 .vscode/
+.env
+.env.*
+*.pem
+*.key
+*.pfx
+*.p12
+credentials*.json
+secrets*.json

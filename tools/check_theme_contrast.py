@@ -8,7 +8,7 @@ from typing import Dict
 
 
 ROOT = Path(__file__).resolve().parents[1]
-SOURCE = ROOT / "CrowEyes_Image_Viewer_1.0.py"
+SOURCE = ROOT / "CrowEyes_Image_Viewer_1.2.py"
 
 
 def relative_luminance(color: str) -> float:
