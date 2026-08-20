@@ -25,11 +25,11 @@ binaries = [
 
 
 a = Analysis(
-    ['CrowEyes_Image_Viewer_1.2.py'],
+    ['CrowEyes_Image_Viewer_1.3.py'],
     pathex=[],
     binaries=binaries,
     datas=datas,
-    hiddenimports=[],
+    hiddenimports=['resvg_py'],
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],

@@ -3,15 +3,18 @@
 CrowEyes는 Windows용 데스크톱 이미지 뷰어입니다. 이미지 감상과 폴더 탐색에 필요한 기능을
 빠르고 간결한 인터페이스로 제공합니다.
 
-- 현재 버전: 1.2
-- 최신 GitHub 릴리스: 1.2
+- 현재 버전: 1.3
+- 최신 GitHub 릴리스: 1.3
 - 제작: Crow Science Lab
 - 릴리스: 2026년 8월
 - 지원 운영체제: Windows 10/11 x64
 
 ## 주요 기능
 
-- JPG, PNG, GIF, WebP, BMP, TIFF, ICO 등 주요 이미지 형식 지원
+- JPG, PNG, GIF, WebP, BMP, TIFF, ICO, PSD, SVG 지원
+- Ghostscript가 설치된 PC에서 EPS 선택 지원(AI 파일은 지원하지 않음)
+- Windows 기본 프린터 선택 창을 이용한 고품질 이미지 인쇄(`Ctrl+P`)
+- SVG 확대 시 필요한 해상도로 단계형 재렌더링하여 선명도 유지
 - 폴더의 이전·다음 이미지를 키보드와 마우스 휠로 탐색
 - 목록·상세·아이콘 격자 보기와 이름/날짜/크기/형식별 오름차순·내림차순 정렬
 - 플레이리스트의 `.. 상위 폴더`·하위 폴더 더블클릭 이동
@@ -30,7 +33,7 @@ CrowEyes는 Windows용 데스크톱 이미지 뷰어입니다. 이미지 감상�
 
 ## 일반 사용자
 
-GitHub의 **Releases** 페이지에서 `CrowEyes_Image_Viewer_1.0_Windows_x64.zip`을 내려받습니다.
+GitHub의 **Releases** 페이지에서 `CrowEyes_Image_Viewer_1.3_Windows_x64.zip`을 내려받습니다.
 ZIP 압축을 푼 뒤 `CrowEyes.exe`를 실행하면 Python 설치 없이 사용할 수 있습니다.
 
 기본 이미지 뷰어로 사용하려면 CrowEyes에서 다음 메뉴를 선택합니다.
@@ -48,13 +51,14 @@ Python 3.10 이상에서 다음 명령을 실행합니다.
 
 ```bat
 python -m pip install -r requirements.txt
-python CrowEyes_Image_Viewer_1.2.py
+python CrowEyes_Image_Viewer_1.3.py
 ```
 
 ## 검사와 빌드
 
 ```bat
 python tools\check_theme_contrast.py
+python tools\check_extended_formats.py
 python -m PyInstaller --noconfirm --clean CrowEyes.spec
 ```
 
@@ -64,4 +68,4 @@ python -m PyInstaller --noconfirm --clean CrowEyes.spec
 
 Copyright 2026 Crow Science Lab. All rights reserved.
 
-현재 저장소는 비공개 배포 준비용이며, 별도의 오픈 소스 라이선스를 부여하지 않습니다.
+소스가 공개되어 있더라도 별도의 오픈 소스 라이선스는 부여되지 않습니다.
