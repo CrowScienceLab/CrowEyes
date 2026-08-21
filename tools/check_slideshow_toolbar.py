@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import importlib.util
+import re
 import sys
 import tempfile
 import time
@@ -70,7 +71,7 @@ def main() -> None:
         assert viewer._is_slideshow(), "F5 slideshow stopped unexpectedly"
         assert viewer.slideshow_job is not None, "next slideshow tick was not scheduled"
         assert load_count[0] >= 2, f"slideshow tick count was too low: {load_count[0]}"
-        assert viewer._slide_btn.cget("style") == "Accent.Tool.TButton"
+        assert viewer._slide_btn.cget("style") == "Accent.Icon.Tool.TButton"
 
         viewer.event_generate("<F5>")
         pump(viewer, 30)
@@ -85,7 +86,14 @@ def main() -> None:
         assert viewer._icons["eye"].width() == 66
         assert viewer._icons["eye"].height() == 44
         assert all(hasattr(button, "_croweyes_tooltip") for button in viewer._toolbar_buttons)
+        assert all(not re.search(r"[가-힣]", str(button.cget("text"))) for button in viewer._toolbar_buttons), "toolbar contains Korean text"
         assert "Ctrl+O" in viewer._toolbar_buttons[0]._croweyes_tooltip.text
+        viewer._toolbar_buttons[0].event_generate("<Enter>")
+        viewer.update_idletasks()
+        assert viewer._toolbar_buttons[0].cget("style") == "Glow.Icon.Tool.TButton"
+        viewer._toolbar_buttons[0].event_generate("<Leave>")
+        viewer.update_idletasks()
+        assert viewer._toolbar_buttons[0].cget("style") == "Icon.Tool.TButton"
         viewer._toolbar_buttons[0]._croweyes_tooltip._display()
         viewer.update_idletasks()
         assert viewer._toolbar_buttons[0]._croweyes_tooltip.tip is not None

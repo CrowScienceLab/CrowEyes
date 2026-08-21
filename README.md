@@ -18,9 +18,9 @@ GitHub Releases에서 용도에 맞는 파일을 받습니다.
 - PLAYLIST 파일 수·보기·정렬 상태 표시, 폴더 이동, Ctrl/Shift 다중 선택, Explorer drag-out
 - Windows 파일 클립보드 복사, F2 이름 변경, 휴지통 삭제, 파일 위치 열기
 - PNG/JPEG/WebP/BMP/TIFF raster 저장(JPEG 투명 영역은 흰색 합성)
-- JPG, PNG, GIF, WebP, BMP, TIFF, ICO, PSD, SVG 표시와 PSD 합성 썸네일
+- JPG, PNG, GIF, WebP, BMP, TIFF, ICO, PSD, SVG 표시와 실제 PSD 합성 썸네일
 - 실제 SVG의 px/mm/cm/pt/in/viewBox·UTF-8 BOM·UTF-16 처리와 안전한 크기 fallback
-- CrowEyes 인쇄 미리보기, A4/Letter, 세로/가로, 페이지 맞춤/96 DPI 실제 크기, 원본 raster 및 SVG 재렌더 기반 고품질 Windows 인쇄
+- CrowEyes 인쇄 미리보기, 기본 프린터 속성, Windows 프린터 선택, A4/Letter, 세로/가로, 페이지 맞춤/96 DPI 실제 크기, 원본 raster 및 SVG 재렌더 기반 고품질 Windows 인쇄
 - GitHub Releases 기반 수동/24시간 자동 업데이트 확인, 진행률, SHA-256 검증
 - CrowEyes Dark와 Bright Sky Blue 테마, 슬라이드쇼, 애니메이션, 확대/회전/반전/밝기/대비
 

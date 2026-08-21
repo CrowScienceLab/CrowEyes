@@ -4,6 +4,7 @@
 
 - Navigation Bar, 클릭 가능한 Breadcrumb, Command Bar, 실시간 검색
 - 새 Fluent 계열 아이콘과 PLAYLIST 보기/정렬 상태 통합
+- Command Bar를 글자 없는 아이콘 전용으로 정리하고, 평상시 테두리를 제거한 뒤 마우스 오버 글로우와 하단 툴팁 제공
 - 1366×768·1280×720과 좁은 창을 고려한 반응형 명령 표시
 
 ## 파일 관리
@@ -15,7 +16,7 @@
 
 ## 이미지 형식
 
-- PSD 합성 썸네일 로딩 개선
+- Pillow PSD 디코더의 잘못된 프레임 이동을 제거해 실제 PSD 합성 썸네일 표시 수정
 - SVG invalid size fallback과 px/mm/cm/in/pt/viewBox·UTF-8/UTF-16 호환성 향상
 - 외부 네트워크·로컬 linked SVG resource 차단
 
@@ -23,6 +24,7 @@
 
 - CrowEyes Print Preview와 실제 종이 비율·여백 미리보기
 - A4/Letter, 세로/가로, 페이지 맞춤/실제 크기
+- Python 3.14용 `winspool.drv` 연동, 기본 프린터 속성 및 전면 프린터 선택 대화상자 수정
 - 원본 raster 및 출력 크기 기준 SVG 재렌더 고해상도 Windows 인쇄
 
 ## 배포와 업데이트

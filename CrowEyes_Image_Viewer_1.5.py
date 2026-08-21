@@ -576,7 +576,12 @@ def get_default_printer_name() -> str:
     import ctypes
     from ctypes import wintypes
 
-    winspool = ctypes.windll.winspool
+    try:
+        # Python 3.14 no longer resolves the legacy ``winspool`` alias;
+        # Windows ships the print spooler API as winspool.drv.
+        winspool = ctypes.WinDLL("winspool.drv", use_last_error=True)
+    except OSError:
+        return "Windows 기본 프린터"
     winspool.GetDefaultPrinterW.argtypes = [wintypes.LPWSTR, ctypes.POINTER(wintypes.DWORD)]
     winspool.GetDefaultPrinterW.restype = wintypes.BOOL
     needed = wintypes.DWORD(0)
@@ -585,6 +590,36 @@ def get_default_printer_name() -> str:
         return "Windows 기본 프린터"
     buffer = ctypes.create_unicode_buffer(needed.value)
     return buffer.value if winspool.GetDefaultPrinterW(buffer, ctypes.byref(needed)) else "Windows 기본 프린터"
+
+
+def show_printer_properties(printer_name: str, owner_hwnd: int) -> bool:
+    """Open the native properties dialog for the named Windows printer."""
+    if os.name != "nt":
+        raise OSError("프린터 속성은 Windows에서만 지원됩니다.")
+    if not printer_name or printer_name == "Windows 기본 프린터":
+        raise OSError("Windows 기본 프린터가 설정되어 있지 않습니다.")
+    import ctypes
+    from ctypes import wintypes
+
+    winspool = ctypes.WinDLL("winspool.drv", use_last_error=True)
+    winspool.OpenPrinterW.argtypes = [wintypes.LPWSTR, ctypes.POINTER(wintypes.HANDLE), ctypes.c_void_p]
+    winspool.OpenPrinterW.restype = wintypes.BOOL
+    winspool.PrinterProperties.argtypes = [wintypes.HWND, wintypes.HANDLE]
+    winspool.PrinterProperties.restype = wintypes.BOOL
+    winspool.ClosePrinter.argtypes = [wintypes.HANDLE]
+    winspool.ClosePrinter.restype = wintypes.BOOL
+    handle = wintypes.HANDLE()
+    if not winspool.OpenPrinterW(printer_name, ctypes.byref(handle), None):
+        raise ctypes.WinError()
+    try:
+        ctypes.set_last_error(0)
+        shown = bool(winspool.PrinterProperties(owner_hwnd, handle))
+        error = ctypes.get_last_error()
+        if not shown and error:
+            raise ctypes.WinError(error)
+        return shown
+    finally:
+        winspool.ClosePrinter(handle)
 
 
 def print_image_windows(
@@ -1400,6 +1435,25 @@ class ToolTip:
             self._after_id = None
 
 
+def _bind_icon_glow(widget: tk.Widget) -> None:
+    """Keep icon controls borderless at rest and add a compact hover glow."""
+    def enter(_event=None) -> None:
+        if str(widget.cget("state")) != tk.DISABLED:
+            try:
+                widget.configure(style="Glow.Icon.Tool.TButton")
+            except tk.TclError:
+                pass
+
+    def leave(_event=None) -> None:
+        try:
+            widget.configure(style=getattr(widget, "_croweyes_style", "Icon.Tool.TButton"))
+        except tk.TclError:
+            pass
+
+    widget.bind("<Enter>", enter, add="+")
+    widget.bind("<Leave>", leave, add="+")
+
+
 def _tool_button(
     parent: tk.Widget,
     text: str,
@@ -1410,13 +1464,14 @@ def _tool_button(
 ) -> ttk.Button:
     button = ttk.Button(
         parent, text=text, image=image, compound=tk.LEFT,
-        command=command, width=width, style="Tool.TButton",
+        command=command, width=width, style="Icon.Tool.TButton",
     )
     button._croweyes_image = image  # type: ignore[attr-defined]
     # ttkbootstrap may normalize an as-yet undefined custom style to TButton.
     # _apply_theme restores this marker after all product styles are defined.
-    button._croweyes_style = "Tool.TButton"  # type: ignore[attr-defined]
+    button._croweyes_style = "Icon.Tool.TButton"  # type: ignore[attr-defined]
     button._croweyes_tooltip = ToolTip(button, tooltip)  # type: ignore[attr-defined]
+    _bind_icon_glow(button)
     return button
 
 
@@ -1553,45 +1608,46 @@ class CrowEyesToolbar(ttk.Frame):
         buttons.pack(side=tk.LEFT, fill=tk.X)
         viewer._toolbar_primary = viewer._toolbar_actions = buttons
 
-        def immediate(icon: str, text: str, tip: str, command, priority: int = 1) -> ttk.Button:
-            button = _tool_button(buttons, text, tip, viewer._action(command), max(1, len(text) + 1), viewer._icons[icon])
+        def immediate(icon: str, tip: str, command, hide_narrow: bool = False) -> ttk.Button:
+            button = _tool_button(buttons, "", tip, viewer._action(command), 1, viewer._icons[icon])
             button.pack(side=tk.LEFT, padx=(0, 4))
             viewer._toolbar_buttons.append(button)
-            viewer._responsive_buttons.append((button, text, priority))
-            if priority >= 2:
+            viewer._responsive_buttons.append((button, "", 1))
+            if hide_narrow:
                 viewer._responsive_hide_narrow.append(button)
             return button
 
-        immediate("open_image", "파일 열기", "이미지 열기 (Ctrl+O)", viewer.open_file_dialog)
-        immediate("folder", "폴더 열기", "폴더로 보기 (Ctrl+Shift+O)", viewer.open_folder_dialog)
-        immediate("save", "저장", "다른 형식으로 저장 (Ctrl+S)", viewer.save_as, 2)
-        immediate("print", "인쇄", "CrowEyes 인쇄 미리보기 (Ctrl+P)", viewer.print_current_image, 2)
+        immediate("open_image", "이미지 열기 (Ctrl+O)", viewer.open_file_dialog)
+        immediate("folder", "폴더로 보기 (Ctrl+Shift+O)", viewer.open_folder_dialog)
+        immediate("save", "다른 형식으로 저장 (Ctrl+S)", viewer.save_as, True)
+        immediate("print", "인쇄 미리보기 및 프린터 선택 (Ctrl+P)", viewer.print_current_image, True)
         ttk.Separator(buttons, orient=tk.VERTICAL).pack(side=tk.LEFT, fill=tk.Y, padx=4)
-        immediate("previous", "", "이전 이미지 (←)", viewer.prev_image)
-        immediate("next", "", "다음 이미지 (→)", viewer.next_image)
+        immediate("previous", "이전 이미지 (←)", viewer.prev_image)
+        immediate("next", "다음 이미지 (→)", viewer.next_image)
         ttk.Separator(buttons, orient=tk.VERTICAL).pack(side=tk.LEFT, fill=tk.Y, padx=4)
-        immediate("fit", "맞춤", "화면 맞춤 (Ctrl+1)", viewer.fit_to_window, 2)
-        immediate("actual", "원본", "원본 크기 (Ctrl+0)", viewer.actual_size, 2)
-        immediate("zoom_in", "", "확대 (+)", lambda: viewer.zoom_by(1.15))
-        immediate("zoom_out", "", "축소 (-)", lambda: viewer.zoom_by(1 / 1.15))
-        viewer._slide_btn = immediate("play", "", "슬라이드쇼 (F5)", viewer.toggle_slideshow)
+        immediate("fit", "화면 맞춤 (Ctrl+1)", viewer.fit_to_window, True)
+        immediate("actual", "원본 크기 (Ctrl+0)", viewer.actual_size, True)
+        immediate("zoom_in", "확대 (+)", lambda: viewer.zoom_by(1.15))
+        immediate("zoom_out", "축소 (-)", lambda: viewer.zoom_by(1 / 1.15))
+        viewer._slide_btn = immediate("play", "슬라이드쇼 (F5)", viewer.toggle_slideshow)
 
-        def dropdown(icon: str, text: str) -> Tuple[ttk.Menubutton, tk.Menu]:
+        def dropdown(icon: str, tip: str) -> Tuple[ttk.Menubutton, tk.Menu]:
             button = ttk.Menubutton(
-                buttons, image=viewer._icons[icon], text=text + " ▼", compound=tk.LEFT,
-                style="Tool.TButton", width=max(4, len(text) + 2),
+                buttons, image=viewer._icons[icon], text="", compound=tk.LEFT,
+                style="Icon.Tool.TButton", width=1,
             )
             button._croweyes_image = viewer._icons[icon]  # type: ignore[attr-defined]
-            button._croweyes_style = "Tool.TButton"  # type: ignore[attr-defined]
+            button._croweyes_style = "Icon.Tool.TButton"  # type: ignore[attr-defined]
             menu = tk.Menu(button, tearoff=0)
             button.configure(menu=menu)
             button.pack(side=tk.LEFT, padx=(0, 4))
             viewer._toolbar_buttons.append(button)
-            viewer._responsive_dropdowns.append((button, text))
-            button._croweyes_tooltip = ToolTip(button, f"{text} 옵션 메뉴")  # type: ignore[attr-defined]
+            viewer._responsive_dropdowns.append((button, ""))
+            button._croweyes_tooltip = ToolTip(button, tip)  # type: ignore[attr-defined]
+            _bind_icon_glow(button)
             return button, menu
 
-        _view_button, view = dropdown("view", "보기")
+        _view_button, view = dropdown("view", "플레이리스트 보기 방식 및 패널 설정")
         for key in LIST_MODES:
             view.add_radiobutton(
                 label=LIST_MODE_LABELS[key], variable=viewer._list_mode_var, value=key,
@@ -1601,7 +1657,7 @@ class CrowEyesToolbar(ttk.Frame):
         view.add_checkbutton(label="PLAYLIST 패널", variable=viewer._playlist_panel_var, command=viewer.toggle_playlist_panel)
         view.add_checkbutton(label="정보 패널", variable=viewer._info_panel_var, command=viewer.toggle_info_panel)
 
-        _sort_button, sorting = dropdown("sort", "정렬")
+        _sort_button, sorting = dropdown("sort", "파일 정렬 기준 및 방향")
         for key in SORT_KEYS:
             sorting.add_radiobutton(
                 label=SORT_LABELS[key], variable=viewer._sort_var, value=key,
@@ -1611,19 +1667,18 @@ class CrowEyesToolbar(ttk.Frame):
         sorting.add_radiobutton(label="오름차순", variable=viewer._sort_desc_var, value=False, command=lambda: viewer.set_sort_direction(False))
         sorting.add_radiobutton(label="내림차순", variable=viewer._sort_desc_var, value=True, command=lambda: viewer.set_sort_direction(True))
 
-        _transform_button, transform = dropdown("rotate_right", "변환")
+        _transform_button, transform = dropdown("rotate_right", "회전 및 반전")
         transform.add_command(label="오른쪽 회전", image=viewer._icons["rotate_right"], compound=tk.LEFT, command=viewer._action(lambda: viewer.rotate(90)))
         transform.add_command(label="왼쪽 회전", image=viewer._icons["rotate_left"], compound=tk.LEFT, command=viewer._action(lambda: viewer.rotate(-90)))
         transform.add_command(label="좌우 반전", image=viewer._icons["flip_h"], compound=tk.LEFT, command=viewer._action(viewer.toggle_flip_h))
         transform.add_command(label="상하 반전", image=viewer._icons["flip_v"], compound=tk.LEFT, command=viewer._action(viewer.toggle_flip_v))
 
-        _copy_button, copying = dropdown("copy", "복사")
+        _copy_button, copying = dropdown("copy", "이미지 또는 선택 파일 복사")
         copying.add_command(label="이미지 원본 크기 복사", command=lambda: viewer.copy_image_to_clipboard("original"))
         copying.add_command(label="현재 보이는 크기 복사", command=lambda: viewer.copy_image_to_clipboard("visible"))
         copying.add_command(label="선택한 파일 복사 (Ctrl+C)", command=viewer.copy_selected_files)
         viewer._responsive_hide_narrow.extend((_transform_button, _copy_button))
-
-        _more_button, more = dropdown("more", "더 보기")
+        _more_button, more = dropdown("more", "더 보기 · 파일 관리 및 환경설정")
         more.add_command(label="다른 형식으로 저장… (Ctrl+S)", image=viewer._icons["save"], compound=tk.LEFT, command=viewer.save_as)
         more.add_command(label="인쇄 미리보기… (Ctrl+P)", image=viewer._icons["print"], compound=tk.LEFT, command=viewer.print_current_image)
         more.add_separator()
@@ -1781,6 +1836,7 @@ class PrintPreview(tk.Toplevel):
         self.paper_var = tk.StringVar(value="A4")
         self.orientation_var = tk.StringVar(value="portrait")
         self.scale_var = tk.StringVar(value="fit")
+        self.printer_name = get_default_printer_name()
         self.preview_photo: Optional[ImageTk.PhotoImage] = None
 
         body = ttk.Frame(self, padding=14, style="Panel.TFrame")
@@ -1794,8 +1850,12 @@ class PrintPreview(tk.Toplevel):
         side = ttk.Frame(body, padding=18, style="Card.TFrame")
         side.grid(row=0, column=1, sticky="ns")
         ttk.Label(side, text="인쇄 설정", style="Title.TLabel").pack(anchor="w", pady=(0, 18))
-        self._field(side, "프린터")
-        ttk.Label(side, text=get_default_printer_name(), style="Section.TLabel", wraplength=210).pack(fill=tk.X, pady=(0, 14))
+        self._field(side, "기본 프린터")
+        ttk.Label(side, text=self.printer_name, style="Section.TLabel", wraplength=210).pack(fill=tk.X, pady=(0, 4))
+        ttk.Label(
+            side, text="인쇄 버튼에서 다른 프린터를 선택할 수 있습니다.",
+            style="Muted.TLabel", wraplength=210,
+        ).pack(fill=tk.X, pady=(0, 14))
         self._field(side, "용지")
         paper = ttk.Combobox(side, textvariable=self.paper_var, values=("A4", "Letter"), state="readonly", width=22)
         paper.pack(fill=tk.X, pady=(0, 14))
@@ -1808,8 +1868,8 @@ class PrintPreview(tk.Toplevel):
         paper.bind("<<ComboboxSelected>>", lambda _e: self.redraw_preview())
 
         ttk.Separator(side).pack(fill=tk.X, pady=18)
-        ttk.Button(side, text="Windows 프린터 설정", command=self.open_printer_settings).pack(fill=tk.X, pady=(0, 8))
-        ttk.Button(side, text="인쇄…", style="Accent.TButton", command=self.do_print).pack(fill=tk.X, ipady=4)
+        ttk.Button(side, text="기본 프린터 속성…", command=self.open_printer_settings).pack(fill=tk.X, pady=(0, 8))
+        ttk.Button(side, text="프린터 선택 및 인쇄…", style="Accent.TButton", command=self.do_print).pack(fill=tk.X, ipady=4)
         ttk.Button(side, text="닫기", command=self.destroy).pack(fill=tk.X, pady=(8, 0))
         self.after_idle(self.redraw_preview)
 
@@ -1853,8 +1913,16 @@ class PrintPreview(tk.Toplevel):
 
     def open_printer_settings(self) -> None:
         try:
-            os.startfile("ms-settings:printers")  # type: ignore[attr-defined]
-        except OSError as exc:
+            self.update_idletasks()
+            owner = self.winfo_id()
+            if os.name == "nt":
+                import ctypes
+
+                owner = int(ctypes.windll.user32.GetParent(owner) or owner)
+            show_printer_properties(self.printer_name, owner)
+            self.lift()
+            self.focus_force()
+        except Exception as exc:
             messagebox.showerror("프린터 설정", str(exc), parent=self)
 
     def do_print(self) -> None:
@@ -2915,9 +2983,9 @@ class CrowEyesImageViewer(tb.Window):
                 im, _logical = render_eps(path, size, size)
             elif suffix == ".psd":
                 # Force-load the composited preview before the PSD stream closes.
-                # This avoids blank thumbnails from Pillow's lazy PSD decoder.
+                # Pillow's PSD decoder starts on its sole composite frame and
+                # raises EOFError if seek(0) is called, so do not seek here.
                 with Image.open(path) as opened:
-                    opened.seek(0)
                     opened.load()
                     im = _frame_to_rgba(opened.copy())
             else:
@@ -4020,6 +4088,64 @@ class CrowEyesImageViewer(tb.Window):
             foreground=[("disabled", t["muted"])],
             relief=[("pressed", "sunken"), ("!pressed", "raised")],
         )
+        icon_button_style = {
+            "background": t["toolbar"], "foreground": t["fg"],
+            "bordercolor": t["toolbar"], "lightcolor": t["toolbar"],
+            "darkcolor": t["toolbar"], "focuscolor": t["toolbar"],
+            "borderwidth": 0, "relief": "flat", "padding": (6, 5),
+        }
+        style.configure("Icon.Tool.TButton", **icon_button_style)
+        borderless_icon_layout = [
+            ("Button.padding", {
+                "sticky": "nswe",
+                "children": [("Button.label", {"sticky": "nswe"})],
+            }),
+        ]
+        glow_icon_layout = [
+            ("Button.border", {
+                "sticky": "nswe", "border": "1",
+                "children": [
+                    ("Button.padding", {
+                        "sticky": "nswe",
+                        "children": [("Button.label", {"sticky": "nswe"})],
+                    }),
+                ],
+            }),
+        ]
+        style.layout("Icon.Tool.TButton", borderless_icon_layout)
+        style.map(
+            "Icon.Tool.TButton",
+            background=[("pressed", t["button_pressed"]), ("active", t["toolbar"])],
+            foreground=[("disabled", t["muted"])],
+            relief=[("pressed", "flat"), ("!pressed", "flat")],
+        )
+        glow_icon_style = dict(icon_button_style)
+        glow_icon_style.update(
+            background=t["select"], bordercolor=t["accent_hi"],
+            lightcolor=t["accent"], darkcolor=t["accent"], focuscolor=t["accent_hi"],
+            borderwidth=1,
+        )
+        style.configure("Glow.Icon.Tool.TButton", **glow_icon_style)
+        style.layout("Glow.Icon.Tool.TButton", glow_icon_layout)
+        style.map(
+            "Glow.Icon.Tool.TButton",
+            background=[("pressed", t["button_pressed"]), ("active", t["select"])],
+            bordercolor=[("active", t["accent_hi"])],
+            lightcolor=[("active", t["accent"])], darkcolor=[("active", t["accent"])],
+            relief=[("pressed", "flat"), ("!pressed", "flat")],
+        )
+        active_icon_style = dict(icon_button_style)
+        active_icon_style.update(
+            background=t["accent_button"], bordercolor=t["accent_hi"],
+            lightcolor=t["accent"], darkcolor=t["accent"],
+        )
+        style.configure("Accent.Icon.Tool.TButton", **active_icon_style)
+        style.layout("Accent.Icon.Tool.TButton", glow_icon_layout)
+        style.map(
+            "Accent.Icon.Tool.TButton",
+            background=[("pressed", t["accent_pressed"]), ("active", t["accent_button"])],
+            relief=[("pressed", "flat"), ("!pressed", "flat")],
+        )
         accent_button_style = dict(button_style)
         accent_button_style.update(
             background=t["accent_button"], foreground="#FFFFFF", padding=(5, 4),
@@ -4652,7 +4778,7 @@ class CrowEyesImageViewer(tb.Window):
         else:
             self._stop_animation_timer()
             self.status.configure(text=f"애니메이션 일시정지 · {self.anim_index + 1}/{len(self.anim_frames)} 프레임")
-        animation_style = "Accent.Tool.TButton" if self.anim_playing else "Tool.TButton"
+        animation_style = "Accent.Icon.Tool.TButton" if self.anim_playing else "Icon.Tool.TButton"
         self._anim_btn._croweyes_style = animation_style  # type: ignore[attr-defined]
         self._anim_btn.configure(style=animation_style)
 
@@ -4743,7 +4869,14 @@ class CrowEyesImageViewer(tb.Window):
         self.status.configure(text="Windows 프린터 선택 창을 여는 중…")
         self.update_idletasks()
         try:
-            owner = self.winfo_id()
+            owner_widget = parent or self
+            owner_widget.update_idletasks()
+            try:
+                owner_widget.lift()
+                owner_widget.focus_force()
+            except tk.TclError:
+                pass
+            owner = owner_widget.winfo_id()
             if os.name == "nt":
                 import ctypes
 
@@ -5276,7 +5409,7 @@ class CrowEyesImageViewer(tb.Window):
         if self._slide_btn is None:
             return
         playing = self._is_slideshow()
-        slide_style = "Accent.Tool.TButton" if playing else "Tool.TButton"
+        slide_style = "Accent.Icon.Tool.TButton" if playing else "Icon.Tool.TButton"
         self._slide_btn._croweyes_style = slide_style  # type: ignore[attr-defined]
         self._slide_btn.configure(
             text="", image=self._icons["pause" if playing else "play"],

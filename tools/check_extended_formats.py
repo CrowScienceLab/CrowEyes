@@ -98,6 +98,23 @@ def check_psd(path: Path, label: str) -> None:
     print(f"PASS {label}: {frames[0].width}x{frames[0].height}, {elapsed:.3f}s")
 
 
+def check_psd_thumbnail(path: Path) -> None:
+    """Exercise the real playlist thumbnail path without requiring a Tk window."""
+    viewer = object.__new__(app.CrowEyesImageViewer)
+    placeholder = object()
+    viewer._placeholder_photo = placeholder
+    viewer._theme = lambda: {"panel": "#20252B"}
+    original_photo_image = app.ImageTk.PhotoImage
+    app.ImageTk.PhotoImage = lambda image: image
+    try:
+        thumbnail = viewer._make_thumb(path, 96)
+    finally:
+        app.ImageTk.PhotoImage = original_photo_image
+    require(thumbnail is not placeholder, "PSD playlist thumbnail fell back to the placeholder")
+    require(isinstance(thumbnail, Image.Image), "PSD playlist thumbnail did not produce an image")
+    require(thumbnail.size == (96, 96) and thumbnail.getbbox() is not None, "PSD playlist thumbnail is empty")
+
+
 def check_regressions(folder: Path) -> None:
     for suffix, file_format in ((".png", "PNG"), (".jpg", "JPEG"), (".webp", "WEBP")):
         path = folder / f"static{suffix}"
@@ -162,6 +179,7 @@ def main() -> None:
         large = Path(os.environ["CROWEYES_TEST_LARGE_PSD"]) if os.environ.get("CROWEYES_TEST_LARGE_PSD") else create_flat_psd(folder / "large.psd", 2400, 1600)
         check_psd(normal, "normal PSD")
         check_psd(large, "large PSD")
+        check_psd_thumbnail(normal)
     print("PASS v1.5 extended formats, print layout, and raster regression checks")
 
 
