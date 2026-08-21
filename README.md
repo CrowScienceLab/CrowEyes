@@ -1,71 +1,50 @@
 # CrowEyes Image Viewer
 
-CrowEyes는 Windows용 데스크톱 이미지 뷰어입니다. 이미지 감상과 폴더 탐색에 필요한 기능을
-빠르고 간결한 인터페이스로 제공합니다.
+CrowEyes 1.5는 가볍고 빠른 Windows 이미지 뷰어에 파일 탐색·관리·출력을 연결한 Windows 10/11 x64용 데스크톱 프로그램입니다. 제작자는 Crow Science Lab입니다.
 
-- 현재 버전: 1.3
-- 최신 GitHub 릴리스: 1.3
-- 제작: Crow Science Lab
-- 릴리스: 2026년 8월
-- 지원 운영체제: Windows 10/11 x64
+## 다운로드
 
-## 주요 기능
+GitHub Releases에서 용도에 맞는 파일을 받습니다.
 
-- JPG, PNG, GIF, WebP, BMP, TIFF, ICO, PSD, SVG 지원
-- Ghostscript가 설치된 PC에서 EPS 선택 지원(AI 파일은 지원하지 않음)
-- Windows 기본 프린터 선택 창을 이용한 고품질 이미지 인쇄(`Ctrl+P`)
-- SVG 확대 시 필요한 해상도로 단계형 재렌더링하여 선명도 유지
-- 폴더의 이전·다음 이미지를 키보드와 마우스 휠로 탐색
-- 목록·상세·아이콘 격자 보기와 이름/날짜/크기/형식별 오름차순·내림차순 정렬
-- 플레이리스트의 `.. 상위 폴더`·하위 폴더 더블클릭 이동
-- 플레이리스트 Ctrl/Shift 다중 선택 유지와 Windows 탐색기로 파일 끌어 놓기 복사
-- `+`, `-` 확대·축소, 화면 맞춤, 원본 크기, 회전, 좌우·상하 반전
-- 이미지 우클릭으로 원본 크기·보이는 크기·선택 영역을 클립보드에 복사
-- GIF/WebP 애니메이션과 슬라이드쇼
-- F5·상단 버튼 슬라이드쇼 재생/일시정지와 파일명에 영향받지 않는 고정 툴바
-- 상단의 중복 파일명과 하단 확대 제어를 정리한 고정 폭 전체 경로 표시줄
-- 고정된 앱 제목과 `Pixel (x, y) #RRGGBB · 크기 % · 전체 경로` 순서의 하단 정보 표시
-- 까마귀 눈 로고와 CrowEyes 이름 뒤로 12개 명령이 연속되는 반응형 상단 툴바 및 통일된 벡터형 아이콘
-- 전문 그래픽 기반의 투명 까마귀 눈 로고, 큰 CrowEyes 워드마크, 이름·단축키 툴팁
-- `CrowEyes Dark · Crow`, `Bright Sky Blue` 제품 테마
-- Windows 기본 이미지 프로그램 등록 도우미
-- 파일 연결로 실행할 때 자동 창 선택 및 키보드 포커스
+- 설치형: `CrowEyes_Setup_1.5_Windows_x64.exe`
+- 무설치형: `CrowEyes_Portable_1.5_Windows_x64.zip`
+- 무결성 값: `SHA256SUMS.txt`
 
-## 일반 사용자
+설치형은 관리자 권한이 필요 없는 사용자별 경로 `%LOCALAPPDATA%\Programs\CrowEyes`를 기본으로 사용하며 설치 위치를 바꿀 수 있습니다. Portable ZIP은 압축을 푼 뒤 `CrowEyes.exe`를 실행하면 되며 Python 설치가 필요하지 않습니다.
 
-GitHub의 **Releases** 페이지에서 `CrowEyes_Image_Viewer_1.3_Windows_x64.zip`을 내려받습니다.
-ZIP 압축을 푼 뒤 `CrowEyes.exe`를 실행하면 Python 설치 없이 사용할 수 있습니다.
+## 1.5 주요 기능
 
-기본 이미지 뷰어로 사용하려면 CrowEyes에서 다음 메뉴를 선택합니다.
+- Windows 11 파일 탐색기에서 영감을 받은 뒤로/앞으로/상위/새로고침, 클릭 가능한 Breadcrumb, 실시간 검색, 반응형 Command Bar
+- PLAYLIST 파일 수·보기·정렬 상태 표시, 폴더 이동, Ctrl/Shift 다중 선택, Explorer drag-out
+- Windows 파일 클립보드 복사, F2 이름 변경, 휴지통 삭제, 파일 위치 열기
+- PNG/JPEG/WebP/BMP/TIFF raster 저장(JPEG 투명 영역은 흰색 합성)
+- JPG, PNG, GIF, WebP, BMP, TIFF, ICO, PSD, SVG 표시와 PSD 합성 썸네일
+- 실제 SVG의 px/mm/cm/pt/in/viewBox·UTF-8 BOM·UTF-16 처리와 안전한 크기 fallback
+- CrowEyes 인쇄 미리보기, A4/Letter, 세로/가로, 페이지 맞춤/96 DPI 실제 크기, 원본 raster 및 SVG 재렌더 기반 고품질 Windows 인쇄
+- GitHub Releases 기반 수동/24시간 자동 업데이트 확인, 진행률, SHA-256 검증
+- CrowEyes Dark와 Bright Sky Blue 테마, 슬라이드쇼, 애니메이션, 확대/회전/반전/밝기/대비
 
-1. `설정 > 기본 프로그램 등록…`
-2. 사용할 이미지 확장자 선택
-3. `자동 등록`을 눌러 아직 기본 앱이 정해지지 않은 형식에 CrowEyes 적용
+AI 파일은 지원하지 않습니다. EPS는 Ghostscript가 이미 설치된 PC에서만 선택 지원하며 배포본에 Ghostscript를 포함하지 않습니다.
 
-Windows가 보호하는 기존 사용자 선택은 CrowEyes가 임의로 바꾸지 않습니다. 이미 다른 기본 앱이
-지정된 형식은 `등록 후 Windows 설정 열기`에서 사용자가 직접 CrowEyes를 선택할 수 있습니다.
+## 기본 앱 등록
 
-## 소스 실행
+설치 프로그램과 앱의 `더 보기 > 기본 앱 등록`은 CrowEyes를 지원 이미지의 “연결 프로그램” 후보로 등록합니다. Windows 정책상 기존 기본 앱을 강제로 변경하지 않으며, 최종 선택은 Windows 기본 앱 설정에서 사용자가 합니다. EPS는 기본 등록 대상에서 제외됩니다.
 
-Python 3.10 이상에서 다음 명령을 실행합니다.
+## 업데이트
+
+`더 보기 > 업데이트 확인`을 선택합니다. 새 릴리스가 있으면 배포 형태에 맞는 Setup 또는 Portable ZIP과 `SHA256SUMS.txt`를 내려받아 SHA-256이 일치할 때만 다음 단계로 진행합니다. 설치형은 검증된 Setup을 실행하고, Portable은 실행 파일을 자동 교체하지 않고 ZIP 위치를 엽니다. 설정은 사용자 홈의 `.croweyes_image_viewer.json`에 저장되어 업그레이드 설치로 초기화되지 않습니다.
+
+## 소스 실행과 빌드
+
+Python 3.10 이상에서 다음을 실행합니다.
 
 ```bat
 python -m pip install -r requirements.txt
-python CrowEyes_Image_Viewer_1.3.py
+python CrowEyes_Image_Viewer_1.5.py
 ```
 
-## 검사와 빌드
-
-```bat
-python tools\check_theme_contrast.py
-python tools\check_extended_formats.py
-python -m PyInstaller --noconfirm --clean CrowEyes.spec
-```
-
-자세한 빌드 방법은 [BUILD.md](BUILD.md)를 참고하십시오.
+검사·PyInstaller·Inno Setup 빌드 방법은 [BUILD.md](BUILD.md)를 참고하십시오.
 
 ## 저작권
 
-Copyright 2026 Crow Science Lab. All rights reserved.
-
-소스가 공개되어 있더라도 별도의 오픈 소스 라이선스는 부여되지 않습니다.
+Copyright 2026 Crow Science Lab. All rights reserved. 별도의 오픈 소스 라이선스는 부여되지 않습니다.

@@ -1,4 +1,4 @@
-"""Regression checks for CrowEyes 1.2 playlist selection and folder rows."""
+"""Regression checks for CrowEyes 1.5 playlist selection and folder rows."""
 
 from __future__ import annotations
 
@@ -12,11 +12,11 @@ from PIL import Image
 
 
 ROOT = Path(__file__).resolve().parents[1]
-SOURCE = ROOT / "CrowEyes_Image_Viewer_1.2.py"
+SOURCE = ROOT / "CrowEyes_Image_Viewer_1.5.py"
 
 
 def load_viewer_module():
-    spec = importlib.util.spec_from_file_location("croweyes_v12_playlist_check", SOURCE)
+    spec = importlib.util.spec_from_file_location("croweyes_v15_playlist_check", SOURCE)
     if spec is None or spec.loader is None:
         raise RuntimeError(f"Cannot import {SOURCE}")
     module = importlib.util.module_from_spec(spec)

@@ -13,11 +13,11 @@ from PIL import Image
 
 
 ROOT = Path(__file__).resolve().parents[1]
-SOURCE = ROOT / "CrowEyes_Image_Viewer_1.2.py"
+SOURCE = ROOT / "CrowEyes_Image_Viewer_1.5.py"
 
 
 def load_viewer_module():
-    spec = importlib.util.spec_from_file_location("croweyes_v12_slideshow_check", SOURCE)
+    spec = importlib.util.spec_from_file_location("croweyes_v15_slideshow_check", SOURCE)
     if spec is None or spec.loader is None:
         raise RuntimeError(f"Cannot import {SOURCE}")
     module = importlib.util.module_from_spec(spec)
@@ -80,12 +80,12 @@ def main() -> None:
         # Filename changes may be arbitrarily long, but primary/action button
         # positions must remain fixed because the brand area has a fixed size.
         viewer.update_idletasks()
-        assert len(viewer._toolbar_buttons) == 12
+        assert len(viewer._toolbar_buttons) >= 12
         assert viewer._brand_label.cget("text") == "CrowEyes"
         assert viewer._icons["eye"].width() == 66
         assert viewer._icons["eye"].height() == 44
         assert all(hasattr(button, "_croweyes_tooltip") for button in viewer._toolbar_buttons)
-        assert "←" in viewer._toolbar_buttons[0]._croweyes_tooltip.text
+        assert "Ctrl+O" in viewer._toolbar_buttons[0]._croweyes_tooltip.text
         viewer._toolbar_buttons[0]._croweyes_tooltip._display()
         viewer.update_idletasks()
         assert viewer._toolbar_buttons[0]._croweyes_tooltip.tip is not None
@@ -100,12 +100,12 @@ def main() -> None:
             right.winfo_rootx() - (left.winfo_rootx() + left.winfo_width())
             for left, right in zip(viewer._toolbar_buttons, viewer._toolbar_buttons[1:])
         ]
-        assert max(gaps) <= 6, gaps
+        assert max(gaps) <= 16, gaps  # deliberate 4px button gaps and 14px separators
         assert viewer._toolbar_buttons[-1].winfo_rootx() + viewer._toolbar_buttons[-1].winfo_width() < viewer.winfo_rootx() + viewer.winfo_width()
         assert viewer._icons["previous"].width() == 20
         assert viewer._icons["eye"].width() == 66
 
-        # The complete brand + 12-button row must still fit at the declared
+        # The responsive command row must still fit at the declared
         # minimum window width without hiding the final overflow menu.
         viewer.geometry("860x520")
         pump(viewer, 30)
@@ -116,6 +116,11 @@ def main() -> None:
         assert viewer._brightness_scale.winfo_rootx() > viewer._path_label.winfo_rootx()
         assert viewer._brightness_scale.winfo_width() <= 60
         assert viewer._contrast_scale.winfo_width() <= 60
+        viewer.set_ui_theme("bright_sky_blue")
+        pump(viewer, 80)
+        toolbar_right = viewer._toolbar_buttons[-1].winfo_rootx() + viewer._toolbar_buttons[-1].winfo_width()
+        assert toolbar_right <= viewer.winfo_rootx() + viewer.winfo_width(), "theme rebuild lost responsive layout"
+        assert viewer._toolbar_buttons[-1].winfo_ismapped(), "More menu disappeared after theme rebuild"
 
         # Pixel color is shown as RGB hexadecimal and zoom has its own stable
         # field immediately before the full path.

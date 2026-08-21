@@ -2,3 +2,4 @@ Pillow>=10.0,<13
 ttkbootstrap==1.10.1
 tkinterdnd2==0.6.2
 resvg_py==0.4.0
+Send2Trash==2.1.0

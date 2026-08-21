@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Regression checks for CrowEyes 1.3 printing and extended image formats."""
+"""Regression checks for CrowEyes 1.5 printing and extended image formats."""
 
 from __future__ import annotations
 
@@ -14,8 +14,8 @@ from PIL import Image
 
 
 ROOT = Path(__file__).resolve().parents[1]
-SOURCE = ROOT / "CrowEyes_Image_Viewer_1.3.py"
-spec = importlib.util.spec_from_file_location("croweyes_v13", SOURCE)
+SOURCE = ROOT / "CrowEyes_Image_Viewer_1.5.py"
+spec = importlib.util.spec_from_file_location("croweyes_v15", SOURCE)
 assert spec and spec.loader
 app = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(app)
@@ -154,7 +154,7 @@ def check_regressions(folder: Path) -> None:
 
 
 def main() -> None:
-    with tempfile.TemporaryDirectory(prefix="croweyes-v13-") as temp:
+    with tempfile.TemporaryDirectory(prefix="croweyes-v15-") as temp:
         folder = Path(temp)
         check_svg(folder)
         check_regressions(folder)
@@ -162,7 +162,7 @@ def main() -> None:
         large = Path(os.environ["CROWEYES_TEST_LARGE_PSD"]) if os.environ.get("CROWEYES_TEST_LARGE_PSD") else create_flat_psd(folder / "large.psd", 2400, 1600)
         check_psd(normal, "normal PSD")
         check_psd(large, "large PSD")
-    print("PASS v1.3 extended formats, print layout, and raster regression checks")
+    print("PASS v1.5 extended formats, print layout, and raster regression checks")
 
 
 if __name__ == "__main__":
