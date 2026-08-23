@@ -14,11 +14,11 @@ from PIL import Image
 
 
 ROOT = Path(__file__).resolve().parents[1]
-SOURCE = ROOT / "CrowEyes_Image_Viewer_1.5.py"
+SOURCE = ROOT / "CrowEyes_Image_Viewer_1.6.py"
 
 
 def load_viewer_module():
-    spec = importlib.util.spec_from_file_location("croweyes_v15_slideshow_check", SOURCE)
+    spec = importlib.util.spec_from_file_location("croweyes_v16_slideshow_check", SOURCE)
     if spec is None or spec.loader is None:
         raise RuntimeError(f"Cannot import {SOURCE}")
     module = importlib.util.module_from_spec(spec)
@@ -31,6 +31,7 @@ def load_viewer_module():
         "list_mode": "small",
         "window_geometry": "1200x760",
     }
+    module.save_settings = lambda _settings: None
     return module
 
 
@@ -88,9 +89,12 @@ def main() -> None:
         assert all(hasattr(button, "_croweyes_tooltip") for button in viewer._toolbar_buttons)
         assert all(not re.search(r"[가-힣]", str(button.cget("text"))) for button in viewer._toolbar_buttons), "toolbar contains Korean text"
         assert "Ctrl+O" in viewer._toolbar_buttons[0]._croweyes_tooltip.text
-        viewer._toolbar_buttons[0].event_generate("<Enter>")
+        hover_button = viewer._toolbar_buttons[0]
+        hover_geometry = (hover_button.winfo_x(), hover_button.winfo_y(), hover_button.winfo_width(), hover_button.winfo_height())
+        hover_button.event_generate("<Enter>")
         viewer.update_idletasks()
-        assert viewer._toolbar_buttons[0].cget("style") == "Glow.Icon.Tool.TButton"
+        assert hover_button.cget("style") == "Icon.Tool.TButton"
+        assert (hover_button.winfo_x(), hover_button.winfo_y(), hover_button.winfo_width(), hover_button.winfo_height()) == hover_geometry
         viewer._toolbar_buttons[0].event_generate("<Leave>")
         viewer.update_idletasks()
         assert viewer._toolbar_buttons[0].cget("style") == "Icon.Tool.TButton"
@@ -112,6 +116,12 @@ def main() -> None:
         assert viewer._toolbar_buttons[-1].winfo_rootx() + viewer._toolbar_buttons[-1].winfo_width() < viewer.winfo_rootx() + viewer.winfo_width()
         assert viewer._icons["previous"].width() == 20
         assert viewer._icons["eye"].width() == 66
+        assert viewer.toolbar.winfo_rooty() < viewer.navigation_bar.winfo_rooty()
+        viewer.toggle_image_fullscreen()
+        pump(viewer, 20)
+        viewer.toggle_image_fullscreen()
+        pump(viewer, 20)
+        assert viewer.toolbar.winfo_rooty() < viewer.navigation_bar.winfo_rooty(), "fullscreen restore swapped chrome rows"
 
         # The responsive command row must still fit at the declared
         # minimum window width without hiding the final overflow menu.

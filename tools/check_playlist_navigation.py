@@ -1,4 +1,4 @@
-"""Regression checks for CrowEyes 1.5 playlist selection and folder rows."""
+"""Regression checks for CrowEyes 1.6 playlist selection and folder roots."""
 
 from __future__ import annotations
 
@@ -12,11 +12,11 @@ from PIL import Image
 
 
 ROOT = Path(__file__).resolve().parents[1]
-SOURCE = ROOT / "CrowEyes_Image_Viewer_1.5.py"
+SOURCE = ROOT / "CrowEyes_Image_Viewer_1.6.py"
 
 
 def load_viewer_module():
-    spec = importlib.util.spec_from_file_location("croweyes_v15_playlist_check", SOURCE)
+    spec = importlib.util.spec_from_file_location("croweyes_v16_playlist_check", SOURCE)
     if spec is None or spec.loader is None:
         raise RuntimeError(f"Cannot import {SOURCE}")
     module = importlib.util.module_from_spec(spec)
@@ -27,6 +27,7 @@ def load_viewer_module():
         "auto_register_associations": False,
         "list_mode": "icons",
     }
+    module.save_settings = lambda _settings: None
     return module
 
 
@@ -53,8 +54,8 @@ def main() -> None:
         viewer._populate_list_names_only()
 
         kinds = [kind for kind, _path, _idx in viewer._playlist_items]
-        assert kinds[:3] == ["parent", "folder", "folder"], kinds
-        assert kinds[3:] == ["image"] * 5, kinds
+        assert kinds[:2] == ["folder", "folder"], kinds
+        assert kinds[2:] == ["image"] * 5, kinds
 
         viewer.goto_index = lambda *_args, **_kwargs: None
         viewer._queue_thumbs_priority = lambda: None
@@ -83,7 +84,7 @@ def main() -> None:
         viewer._selected_folder_path = None
         viewer._restore_playlist_selection_visuals()
         selected_rows = tuple(int(row) for row in viewer._list_widget.curselection())
-        assert selected_rows == (3, 4, 5, 6), selected_rows
+        assert selected_rows == (2, 3, 4, 5), selected_rows
 
         navigated = []
         viewer.open_folders = lambda paths: navigated.extend(paths)
@@ -91,6 +92,11 @@ def main() -> None:
         viewer._navigate_playlist_folder(folder / "A-folder")
         assert navigated == [folder / "A-folder"]
         assert viewer._search_var.get() == ""
+        viewer.navigate_to_computer()
+        root_kinds = [kind for kind, _path, _idx in viewer._playlist_items]
+        assert "parent" not in root_kinds
+        assert any(kind.startswith("special:") for kind in root_kinds), root_kinds
+        assert viewer.current_folder is None
         viewer.destroy()
 
     print("PASS: playlist multi-selection and folder navigation")

@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
-"""Focused non-destructive checks for CrowEyes 1.5 additions."""
+"""Focused non-destructive checks for CrowEyes 1.6 additions."""
 
 from __future__ import annotations
 
 import importlib.util
+import inspect
 import tempfile
 from pathlib import Path
 
@@ -11,8 +12,8 @@ from PIL import Image
 
 
 ROOT = Path(__file__).resolve().parents[1]
-SOURCE = ROOT / "CrowEyes_Image_Viewer_1.5.py"
-spec = importlib.util.spec_from_file_location("croweyes_v15", SOURCE)
+SOURCE = ROOT / "CrowEyes_Image_Viewer_1.6.py"
+spec = importlib.util.spec_from_file_location("croweyes_v16", SOURCE)
 assert spec and spec.loader
 app = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(app)
@@ -25,11 +26,11 @@ def require(condition: bool, message: str) -> None:
 
 def check_versions_and_hashes(folder: Path) -> None:
     require(app.is_newer_version("v1.10", "1.9"), "numeric semantic comparison failed")
-    require(not app.is_newer_version("v1.5.0", "1.5"), "equal semantic version was newer")
-    asset = app.release_asset({"assets": [{"name": "CrowEyes_Setup_1.5_Windows_x64.exe"}]}, r"CrowEyes_Setup_.+\.exe")
+    require(not app.is_newer_version("v1.6.0", "1.6"), "equal semantic version was newer")
+    asset = app.release_asset({"assets": [{"name": "CrowEyes_Setup_1.6_Windows_x64.exe"}]}, r"CrowEyes_Setup_.+\.exe")
     require(asset is not None, "release asset selection failed")
     payload = folder / "asset.bin"
-    payload.write_bytes(b"CrowEyes v1.5")
+    payload.write_bytes(b"CrowEyes v1.6")
     digest = app.sha256_file(payload)
     parsed = app.parse_sha256s(f"{digest}  asset.bin\n")
     require(parsed.get("asset.bin") == digest, "SHA256SUMS parsing failed")
@@ -91,11 +92,19 @@ def check_print_and_source() -> None:
     require(actual == (120, 360, 1080, 840), f"actual layout mismatch: {actual}")
     source = SOURCE.read_text(encoding="utf-8")
     for marker in (
-        'APP_VERSION = "1.5"', "class NavigationBar", "class CrowEyesToolbar", "class PrintPreview",
+        'APP_VERSION = "1.6"', "class NavigationBar", "class CrowEyesToolbar", "class PrintPreview",
         "def check_for_updates", "def copy_selected_files", "def delete_selected_files",
+        "def navigate_to_computer", "def enumerate_printer_names",
+        "Print directly with app-supplied settings and no second preview dialog",
     ):
-        require(marker in source, f"missing v1.5 source marker: {marker}")
+        require(marker in source, f"missing v1.6 source marker: {marker}")
     require("os.remove(" not in source, "permanent delete call found")
+    require(app.DEFAULT_SETTINGS["ui_theme"] == "croweyes_dark", "black theme is not the default")
+    require(app.DEFAULT_SETTINGS["design_generation"] >= 8, "v1.6 theme migration is missing")
+    direct_print_source = inspect.getsource(app.print_image_windows)
+    require("PrintDlgW" not in direct_print_source, "direct print path still opens the Windows print dialog")
+    require("CreateDCW" in direct_print_source and "DocumentPropertiesW" in direct_print_source,
+            "direct printer configuration path is incomplete")
 
 
 def check_raster_save(folder: Path) -> None:
@@ -109,14 +118,14 @@ def check_raster_save(folder: Path) -> None:
 
 
 def main() -> None:
-    with tempfile.TemporaryDirectory(prefix="croweyes-v15-") as temp:
+    with tempfile.TemporaryDirectory(prefix="croweyes-v16-") as temp:
         folder = Path(temp)
         check_versions_and_hashes(folder)
         check_rename(folder)
         check_svg(folder)
         check_print_and_source()
         check_raster_save(folder)
-    print("PASS: CrowEyes 1.5 file/SVG/print/update checks")
+    print("PASS: CrowEyes 1.6 navigation/print/file checks")
 
 
 if __name__ == "__main__":
