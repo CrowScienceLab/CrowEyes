@@ -1,4 +1,4 @@
-"""Regression checks for CrowEyes 1.6 playlist selection and folder roots."""
+"""Regression checks for CrowEyes 1.7 playlist selection and folder roots."""
 
 from __future__ import annotations
 
@@ -12,11 +12,11 @@ from PIL import Image
 
 
 ROOT = Path(__file__).resolve().parents[1]
-SOURCE = ROOT / "CrowEyes_Image_Viewer_1.6.py"
+SOURCE = ROOT / "CrowEyes_Image_Viewer_1.7.py"
 
 
 def load_viewer_module():
-    spec = importlib.util.spec_from_file_location("croweyes_v16_playlist_check", SOURCE)
+    spec = importlib.util.spec_from_file_location("croweyes_v17_playlist_check", SOURCE)
     if spec is None or spec.loader is None:
         raise RuntimeError(f"Cannot import {SOURCE}")
     module = importlib.util.module_from_spec(spec)
@@ -97,6 +97,15 @@ def main() -> None:
         assert "parent" not in root_kinds
         assert any(kind.startswith("special:") for kind in root_kinds), root_kinds
         assert viewer.current_folder is None
+
+        # Folder, known-folder, and drive rows use the same one-click behavior
+        # in filename/small views as the icon grid.
+        target_item = next(item for item in viewer._playlist_items if item[0] != "image")
+        activated = []
+        viewer._playlist_item_at_event = lambda _event: target_item
+        viewer._navigate_playlist_folder = lambda path: activated.append(path)
+        result = viewer._on_playlist_button_release(SimpleNamespace(state=0, y=0))
+        assert result == "break" and activated == [target_item[1]], activated
         viewer.destroy()
 
     print("PASS: playlist multi-selection and folder navigation")

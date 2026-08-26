@@ -1,4 +1,4 @@
-# CrowEyes Image Viewer 1.6 빌드 및 릴리스
+# CrowEyes Image Viewer 1.7 빌드 및 릴리스
 
 ## 1. Clean venv
 
@@ -15,15 +15,15 @@ py -3 -m venv .publish-venv
 ## 2. 검사
 
 ```bat
-.publish-venv\Scripts\python.exe -m py_compile CrowEyes_Image_Viewer_1.6.py
+.publish-venv\Scripts\python.exe -m py_compile CrowEyes_Image_Viewer_1.7.py
 .publish-venv\Scripts\python.exe tools\check_theme_contrast.py
 .publish-venv\Scripts\python.exe tools\check_playlist_navigation.py
 .publish-venv\Scripts\python.exe tools\check_slideshow_toolbar.py
 .publish-venv\Scripts\python.exe tools\check_extended_formats.py
-.publish-venv\Scripts\python.exe tools\check_v16.py
+.publish-venv\Scripts\python.exe tools\check_v17.py
 ```
 
-`check_v16.py`는 tempfile만 사용해 파일명 검증/이름 변경, semantic version, checksum, SVG 단위·인코딩, PSD 합성 thumbnail 경로, 직접 인쇄 설정과 v1.6 소스 구조를 검사합니다. 실제 휴지통·프린터·Explorer 동작은 Windows GUI smoke test에서 별도로 확인합니다.
+`check_v17.py`는 tempfile만 사용해 파일명 검증/이름 변경, semantic version, checksum, 설정 migration, SVG 단위·인코딩, PSD 합성 thumbnail 경로, 직접 인쇄 설정과 v1.7 소스 구조를 검사합니다. 실제 휴지통·프린터·Explorer 동작은 Windows GUI smoke test에서 별도로 확인합니다.
 
 ## 3. PyInstaller onedir 및 Portable
 
@@ -31,11 +31,11 @@ py -3 -m venv .publish-venv
 .publish-venv\Scripts\python.exe -m PyInstaller --noconfirm --clean CrowEyes.spec
 ```
 
-`dist\CrowEyes\CrowEyes.exe`를 이미지 경로 인자와 빈 실행 두 방식으로 smoke test합니다. 그 후 `dist\CrowEyes`의 내용이 ZIP 최상위에서 바로 보이도록 `CrowEyes_Portable_1.6_Windows_x64.zip`을 만듭니다.
+`dist\CrowEyes\CrowEyes.exe`를 이미지 경로 인자와 빈 실행 두 방식으로 smoke test합니다. 그 후 `dist\CrowEyes`의 내용이 ZIP 최상위에서 바로 보이도록 `CrowEyes_Portable_1.7_Windows_x64.zip`을 만듭니다.
 
 ## 4. Inno Setup
 
-Inno Setup 6의 `ISCC.exe installer\CrowEyes.iss`를 실행하면 `release\CrowEyes_Setup_1.6_Windows_x64.exe`가 생성됩니다. 설치는 관리자 권한이 필요 없는 `%LOCALAPPDATA%\Programs\CrowEyes`가 기본이며 사용자가 경로를 바꿀 수 있습니다. 동일 AppId로 기존 설치를 감지해 업그레이드하고, 시작 메뉴·선택적 바탕 화면 바로가기·제거 프로그램·Open With 후보 등록을 제공합니다. 사용자 설정 파일은 설치 폴더 밖에 있어 업그레이드/제거 시 보존됩니다.
+Inno Setup 6의 `ISCC.exe installer\CrowEyes.iss`를 실행하면 `release\CrowEyes_Setup_1.7_Windows_x64.exe`가 생성됩니다. 설치는 관리자 권한이 필요 없는 `%LOCALAPPDATA%\Programs\CrowEyes`가 기본이며 사용자가 경로를 바꿀 수 있습니다. 동일 AppId로 기존 설치를 감지해 업그레이드하고, 시작 메뉴·선택적 바탕 화면 바로가기·제거 프로그램·Open With 후보 등록을 제공합니다. 사용자 설정 파일은 설치 폴더 밖에 있어 업그레이드/제거 시 보존됩니다.
 
 설치/사용자 지정 경로/업그레이드/제거/재설치 후 실행과 설정 보존을 Windows 10/11 x64에서 확인합니다.
 
@@ -44,12 +44,12 @@ Inno Setup 6의 `ISCC.exe installer\CrowEyes.iss`를 실행하면 `release\CrowE
 Setup과 Portable ZIP에 대해 SHA-256을 계산해 다음 형식의 `release\SHA256SUMS.txt`를 만듭니다.
 
 ```text
-<64자리 hash>  CrowEyes_Setup_1.6_Windows_x64.exe
-<64자리 hash>  CrowEyes_Portable_1.6_Windows_x64.zip
+<64자리 hash>  CrowEyes_Setup_1.7_Windows_x64.exe
+<64자리 hash>  CrowEyes_Portable_1.7_Windows_x64.zip
 ```
 
-GitHub 공개 릴리스 `v1.6` / `CrowEyes Image Viewer 1.6`에 세 파일을 모두 올립니다. 앱 업데이트 기능은 GitHub latest release를 background thread에서 읽고 numeric version 비교 후 선택한 asset을 임시 폴더에 다운로드합니다. `SHA256SUMS.txt`와 일치하지 않으면 Setup을 실행하지 않습니다. Portable은 자체 교체하지 않고 검증된 ZIP 위치만 엽니다.
+사용자 검토가 끝난 뒤 GitHub 공개 릴리스 `v1.7` / `CrowEyes Image Viewer 1.7`에 세 파일을 모두 올립니다. 앱 업데이트 기능은 GitHub latest release를 background thread에서 읽고 numeric version 비교 후 선택한 asset을 임시 폴더에 다운로드합니다. `SHA256SUMS.txt`와 일치하지 않으면 Setup을 실행하지 않습니다. Portable은 자체 교체하지 않고 검증된 ZIP 위치만 엽니다.
 
 ## 6. 코드 서명
 
-현재 인증서가 없다면 `CrowEyes.exe`와 Setup EXE는 unsigned 상태이므로 Windows SmartScreen 경고가 표시될 수 있습니다. 공개 배포 규모가 커지면 신뢰할 수 있는 Authenticode 인증서로 PyInstaller EXE와 최종 Setup EXE를 모두 서명하고 timestamp server를 사용하는 것을 권장합니다.
+현재 인증서가 없어 `CrowEyes.exe`와 Setup EXE는 unsigned 상태입니다. 따라서 Windows SmartScreen 경고 또는 Smart App Control 차단이 발생할 수 있습니다. 무료 배포 방침에서는 이 사실과 공식 다운로드·SHA-256 검증 절차를 `WINDOWS_SECURITY.md`와 앱 내부에 명확히 안내합니다. Smart App Control을 끄도록 자동 유도하거나 Windows 보안 설정을 변경하지 않습니다.

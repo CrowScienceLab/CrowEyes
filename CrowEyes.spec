@@ -25,7 +25,7 @@ binaries = [
 
 
 a = Analysis(
-    ['CrowEyes_Image_Viewer_1.6.py'],
+    ['CrowEyes_Image_Viewer_1.7.py'],
     pathex=[],
     binaries=binaries,
     datas=datas,

@@ -14,11 +14,11 @@ from PIL import Image
 
 
 ROOT = Path(__file__).resolve().parents[1]
-SOURCE = ROOT / "CrowEyes_Image_Viewer_1.6.py"
+SOURCE = ROOT / "CrowEyes_Image_Viewer_1.7.py"
 
 
 def load_viewer_module():
-    spec = importlib.util.spec_from_file_location("croweyes_v16_slideshow_check", SOURCE)
+    spec = importlib.util.spec_from_file_location("croweyes_v17_slideshow_check", SOURCE)
     if spec is None or spec.loader is None:
         raise RuntimeError(f"Cannot import {SOURCE}")
     module = importlib.util.module_from_spec(spec)
@@ -74,10 +74,18 @@ def main() -> None:
         assert load_count[0] >= 2, f"slideshow tick count was too low: {load_count[0]}"
         assert viewer._slide_btn.cget("style") == "Accent.Icon.Tool.TButton"
 
+        # The toolbar callback must stop rather than first interrupting and
+        # then immediately starting a new slideshow.
+        viewer._slide_btn.invoke()
+        pump(viewer, 30)
+        assert not viewer._is_slideshow(), "toolbar slideshow button did not pause slideshow"
+        assert viewer.slideshow_job is None
+        viewer.event_generate("<F5>")
+        pump(viewer, 30)
+        assert viewer._is_slideshow(), "F5 did not restart slideshow"
         viewer.event_generate("<F5>")
         pump(viewer, 30)
         assert not viewer._is_slideshow(), "second F5 did not pause slideshow"
-        assert viewer.slideshow_job is None
 
         # Filename changes may be arbitrarily long, but primary/action button
         # positions must remain fixed because the brand area has a fixed size.
@@ -115,6 +123,9 @@ def main() -> None:
         assert max(gaps) <= 16, gaps  # deliberate 4px button gaps and 14px separators
         assert viewer._toolbar_buttons[-1].winfo_rootx() + viewer._toolbar_buttons[-1].winfo_width() < viewer.winfo_rootx() + viewer.winfo_width()
         assert viewer._icons["previous"].width() == 20
+        toolbar_images = {str(button.cget("image")) for button in viewer._toolbar_buttons}
+        assert str(viewer._icons["previous"]) not in toolbar_images
+        assert str(viewer._icons["next"]) not in toolbar_images
         assert viewer._icons["eye"].width() == 66
         assert viewer.toolbar.winfo_rooty() < viewer.navigation_bar.winfo_rooty()
         viewer.toggle_image_fullscreen()
@@ -147,6 +158,18 @@ def main() -> None:
         viewer.offset_x = viewer.offset_y = 0.0
         viewer.redraw()
         viewer.update_idletasks()
+        assert viewer._canvas_prev_btn.winfo_ismapped()
+        assert viewer._canvas_next_btn.winfo_ismapped()
+        before_edge_geometry = (
+            viewer._canvas_prev_btn.winfo_width(), viewer._canvas_prev_btn.winfo_height(),
+        )
+        viewer._canvas_prev_btn.event_generate("<Enter>")
+        viewer.update_idletasks()
+        assert (viewer._canvas_prev_btn.winfo_width(), viewer._canvas_prev_btn.winfo_height()) == before_edge_geometry
+        viewer._canvas_prev_btn.event_generate("<Leave>")
+        assert viewer._top_search.winfo_height() <= 30
+        assert hasattr(viewer, "_playlist_close_btn")
+        assert not hasattr(viewer, "_playlist_summary_var")
         viewer._on_motion(SimpleNamespace(
             x=viewer.canvas.winfo_width() / 2,
             y=viewer.canvas.winfo_height() / 2,
