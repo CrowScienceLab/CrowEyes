@@ -1,18 +1,27 @@
 # CrowEyes Image Viewer
 
-CrowEyes 1.7은 가볍고 빠른 Windows 이미지 뷰어에 파일 탐색·관리·출력을 연결한 Windows 10/11 x64용 데스크톱 프로그램입니다. 제작자는 Crow Science Lab입니다.
+CrowEyes 1.8은 가볍고 빠른 Windows 이미지 뷰어에 파일 탐색·관리·출력과 선택형 로컬 콘텐츠 안전 기능을 연결한 Windows 10/11 x64용 데스크톱 프로그램입니다. 제작자는 Crow Science Lab입니다.
 
 ## 다운로드
 
 GitHub Releases에서 용도에 맞는 파일을 받습니다.
 
-- 설치형: `CrowEyes_Setup_1.7_Windows_x64.exe`
-- 무설치형: `CrowEyes_Portable_1.7_Windows_x64.zip`
+- 설치형: `CrowEyes_Setup_1.8_Windows_x64.exe`
+- 무설치형: `CrowEyes_Portable_1.8_Windows_x64.zip`
 - 무결성 값: `SHA256SUMS.txt`
 
 설치형은 관리자 권한이 필요 없는 사용자별 경로 `%LOCALAPPDATA%\Programs\CrowEyes`를 기본으로 사용하며 설치 위치를 바꿀 수 있습니다. Portable ZIP은 압축을 푼 뒤 `CrowEyes.exe`를 실행하면 되며 Python 설치가 필요하지 않습니다.
 
-## 1.7 주요 기능
+## 1.8 주요 기능
+
+- 환경설정에서 선택하는 로컬 노골적 노출 이미지 차단 기능(기본값 OFF)
+- 안전 필터 사용 중에는 판정 전 원본·썸네일을 노출하지 않고, 판정 실패도 안전하게 숨김
+- 이미지 파일이나 판정 데이터는 외부 서버/API로 전송하지 않으며 로컬 ONNX 모델만 사용
+- 차단 화면에 경량 투명 WebP 까마귀 캐릭터를 표시하고, 판정 결과는 파일 변경 시 자동 무효화되는 로컬 SQLite 캐시에 저장
+- 파일 연결로 연 이미지를 폴더 전체보다 먼저 처리하고, 썸네일 디코딩을 비동기화해 NAS·대형 폴더의 초기 응답 개선
+- 현재 이미지 주변(±1, ±2)과 보이는 목록을 우선 처리하여 다음 이미지 탐색 속도 유지
+- 파일명으로만 보기 클릭, 창 크기 변경 시 보기 모드 유지, 첫 실행 패널 최소 폭 문제 수정
+- Windows 제목 표시줄과 실행 파일 아이콘을 CrowEyes 까마귀 눈 디자인으로 통일
 
 - 상단 CrowEyes Command Bar와 `내 컴퓨터 > 드라이브 > 폴더` 전체가 클릭되는 Breadcrumb, 새로고침, 실시간 검색
 - 이미지 화면 좌우의 이전·다음 버튼과 3초 기본 간격의 재생/정지가 확실한 슬라이드쇼
@@ -28,11 +37,13 @@ GitHub Releases에서 용도에 맞는 파일을 받습니다.
 - GitHub Releases 기반 수동/24시간 자동 업데이트 확인, 진행률, SHA-256 검증
 - CrowEyes Dark와 Bright Sky Blue 테마, 슬라이드쇼, 애니메이션, 확대/회전/반전/밝기/대비
 
-### 알려진 문제
-
-- 플레이리스트의 `파일명으로만 보기`에서는 파일명을 클릭해도 표시 이미지가 바뀌지 않을 수 있습니다. 다음 업데이트의 우선 수정 항목이며, 그전에는 `작은 아이콘` 또는 `아이콘 격자` 보기를 이용해 주세요.
-
 AI 파일은 지원하지 않습니다. EPS는 Ghostscript가 이미 설치된 PC에서만 선택 지원하며 배포본에 Ghostscript를 포함하지 않습니다.
+
+## 콘텐츠 안전 및 개인정보
+
+`환경설정 > 콘텐츠 안전`에서 `노골적인 노출 이미지 차단`을 선택할 수 있습니다. 새 설치와 업그레이드 모두 기본값은 OFF입니다. ON일 때만 ONNX Runtime과 약 12MB 모델을 지연 로드합니다. 이미지·경로·판정 결과를 인터넷으로 전송하지 않으며, 캐시는 `%LOCALAPPDATA%\CrowEyes`에 저장되고 환경설정에서 지울 수 있습니다. 분류기는 완벽하지 않아 오탐·미탐이 가능하며 의료·법률 판단 도구가 아닙니다.
+
+모델과 런타임의 출처·라이선스·해시는 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)에 정리되어 있습니다.
 
 ## Windows 실행 차단 안내
 
@@ -59,7 +70,7 @@ Python 3.10 이상에서 다음을 실행합니다.
 
 ```bat
 python -m pip install -r requirements.txt
-python CrowEyes_Image_Viewer_1.7.py
+python CrowEyes_Image_Viewer_1.8.py
 ```
 
 검사·PyInstaller·Inno Setup 빌드 방법은 [BUILD.md](BUILD.md)를 참고하십시오.

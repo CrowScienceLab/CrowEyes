@@ -3,3 +3,5 @@ ttkbootstrap==1.10.1
 tkinterdnd2==0.6.2
 resvg_py==0.4.0
 Send2Trash==2.1.0
+numpy==2.5.2
+onnxruntime==1.29.0
