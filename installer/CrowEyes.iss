@@ -1,5 +1,5 @@
 #define MyAppName "CrowEyes Image Viewer"
-#define MyAppVersion "1.8"
+#define MyAppVersion "1.9"
 #define MyAppPublisher "Crow Science Lab"
 #define MyAppExeName "CrowEyes.exe"
 
@@ -16,7 +16,7 @@ PrivilegesRequired=lowest
 ArchitecturesAllowed=x64compatible
 ArchitecturesInstallIn64BitMode=x64compatible
 OutputDir=..\release
-OutputBaseFilename=CrowEyes_Setup_1.8_Windows_x64
+OutputBaseFilename=CrowEyes_Setup_1.9_Windows_x64
 SetupIconFile=..\assets\icons\croweyes.ico
 UninstallDisplayIcon={app}\{#MyAppExeName}
 Compression=lzma2/ultra64
@@ -42,7 +42,7 @@ Source: "..\licenses\*"; DestDir: "{app}\licenses"; Flags: ignoreversion
 [Icons]
 Name: "{group}\CrowEyes Image Viewer"; Filename: "{app}\{#MyAppExeName}"
 Name: "{group}\CrowEyes 제거"; Filename: "{uninstallexe}"
-Name: "{autodesktop}\CrowEyes Image Viewer"; Filename: "{app}\{#MyAppExeName}"; Tasks: desktopicon
+Name: "{autodesktop}\CrowEyes"; Filename: "{app}\{#MyAppExeName}"; Tasks: desktopicon
 
 [Registry]
 Root: HKCU; Subkey: "Software\CrowScienceLab\CrowEyes"; ValueType: string; ValueName: "InstallPath"; ValueData: "{app}"; Flags: uninsdeletekey

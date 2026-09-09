@@ -3,6 +3,7 @@ __pycache__/
 .pytest_cache/
 .publish-venv/
 .venv/
+.inno-setup/
 .setup-temp/
 build/
 dist/

@@ -1,20 +1,26 @@
 # CrowEyes Image Viewer
 
-CrowEyes 1.8은 가볍고 빠른 Windows 이미지 뷰어에 파일 탐색·관리·출력과 선택형 로컬 콘텐츠 안전 기능을 연결한 Windows 10/11 x64용 데스크톱 프로그램입니다. 제작자는 Crow Science Lab입니다.
+CrowEyes 1.9는 가볍고 빠른 Windows 이미지 뷰어에 파일 탐색·관리·출력, C2PA 기반 AI 출처 표시와 선택형 로컬 성인용 컨텐츠 차단 기능을 연결한 Windows 10/11 x64용 데스크톱 프로그램입니다. 제작자는 Crow Science Lab입니다.
 
 ## 다운로드
 
 GitHub Releases에서 용도에 맞는 파일을 받습니다.
 
-- 설치형: `CrowEyes_Setup_1.8_Windows_x64.exe`
-- 무설치형: `CrowEyes_Portable_1.8_Windows_x64.zip`
+- 설치형: `CrowEyes_Setup_1.9_Windows_x64.exe`
+- 무설치형: `CrowEyes_Portable_1.9_Windows_x64.zip`
 - 무결성 값: `SHA256SUMS.txt`
 
 설치형은 관리자 권한이 필요 없는 사용자별 경로 `%LOCALAPPDATA%\Programs\CrowEyes`를 기본으로 사용하며 설치 위치를 바꿀 수 있습니다. Portable ZIP은 압축을 푼 뒤 `CrowEyes.exe`를 실행하면 되며 Python 설치가 필요하지 않습니다.
 
-## 1.8 주요 기능
+## 1.9 주요 기능
 
-- 환경설정에서 선택하는 로컬 노골적 노출 이미지 차단 기능(기본값 OFF)
+- Crow 제품군과 통일된 새 앱 아이콘 및 24px 기능 아이콘
+- C2PA 선언만 사용하는 AI 이미지 확률 표시
+- White + Light Pink 테마 추가, Black 테마 기본값 유지
+- Image Info의 중복 파일명·전체 경로 제거
+- 성인용 컨텐츠 차단 문구로 정비
+
+- 환경설정에서 선택하는 로컬 성인용 컨텐츠 차단 기능(기본값 OFF)
 - 안전 필터 사용 중에는 판정 전 원본·썸네일을 노출하지 않고, 판정 실패도 안전하게 숨김
 - 이미지 파일이나 판정 데이터는 외부 서버/API로 전송하지 않으며 로컬 ONNX 모델만 사용
 - 차단 화면에 경량 투명 WebP 까마귀 캐릭터를 표시하고, 판정 결과는 파일 변경 시 자동 무효화되는 로컬 SQLite 캐시에 저장
@@ -70,7 +76,7 @@ Python 3.10 이상에서 다음을 실행합니다.
 
 ```bat
 python -m pip install -r requirements.txt
-python CrowEyes_Image_Viewer_1.8.py
+python CrowEyes_Image_Viewer_1.9.py
 ```
 
 검사·PyInstaller·Inno Setup 빌드 방법은 [BUILD.md](BUILD.md)를 참고하십시오.

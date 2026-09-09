@@ -3,12 +3,13 @@
 from __future__ import annotations
 
 import importlib.util
+import sys
 from pathlib import Path
 from typing import Dict
 
 
 ROOT = Path(__file__).resolve().parents[1]
-SOURCE = ROOT / "CrowEyes_Image_Viewer_1.7.py"
+SOURCE = ROOT / "CrowEyes_Image_Viewer_1.9.py"
 
 
 def relative_luminance(color: str) -> float:
@@ -27,6 +28,7 @@ def contrast_ratio(foreground: str, background: str) -> float:
 
 
 def load_themes() -> Dict[str, dict]:
+    sys.path.insert(0, str(ROOT))
     spec = importlib.util.spec_from_file_location("croweyes_theme_source", SOURCE)
     if spec is None or spec.loader is None:
         raise RuntimeError(f"Cannot load {SOURCE}")

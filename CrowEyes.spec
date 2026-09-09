@@ -13,6 +13,7 @@ datas = [(str(msgcat), 'tcl8\\8.5')] if msgcat.is_file() else []
 datas += collect_data_files('ttkbootstrap')
 datas += [
     (str(Path('assets/icons/croweyes-eye-logo.png').resolve()), 'assets/icons'),
+    (str(Path('assets/icons/croweyes-1.9.png').resolve()), 'assets/icons'),
     (str(Path('assets/icons/croweyes.ico').resolve()), 'assets/icons'),
     (str(Path('assets/safety/content_blocked_crow.webp').resolve()), 'assets/safety'),
     (str(Path('assets/models/nudenet-320n.onnx').resolve()), 'assets/models'),
@@ -33,7 +34,7 @@ binaries += collect_dynamic_libs('onnxruntime')
 
 
 a = Analysis(
-    ['CrowEyes_Image_Viewer_1.8.py'],
+    ['CrowEyes_Image_Viewer_1.9.py'],
     pathex=[],
     binaries=binaries,
     datas=datas,

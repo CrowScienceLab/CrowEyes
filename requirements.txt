@@ -5,3 +5,4 @@ resvg_py==0.4.0
 Send2Trash==2.1.0
 numpy==2.5.2
 onnxruntime==1.29.0
+c2pa-python==0.37.10
