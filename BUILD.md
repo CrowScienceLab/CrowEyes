@@ -31,7 +31,7 @@ py -3 -m venv .publish-venv
 .publish-venv\Scripts\python.exe -m PyInstaller --noconfirm --clean CrowEyes.spec
 ```
 
-`dist\CrowEyes\CrowEyes.exe`를 이미지 경로 인자와 빈 실행, 안전 필터 OFF/ON 방식으로 smoke test합니다. 그 후 `dist\CrowEyes`의 내용이 ZIP 최상위에서 바로 보이도록 `CrowEyes_Portable_1.9_Windows_x64.zip`을 만듭니다.
+`dist\CrowEyes\_internal\c2pa\libs\c2pa_c.dll` 포함 여부를 확인하고, `CrowEyes.exe --c2pa-self-test test-assets\CrowEyes_C2PA_50pct_sample.jpg`를 실행해 종료 코드 0을 확인합니다. 이후 이미지 경로 인자와 빈 실행, 안전 필터 OFF/ON 방식으로 smoke test합니다. 그 후 `dist\CrowEyes`의 내용이 ZIP 최상위에서 바로 보이도록 `CrowEyes_Portable_1.9_Windows_x64.zip`을 만듭니다.
 
 ## 4. Inno Setup
 

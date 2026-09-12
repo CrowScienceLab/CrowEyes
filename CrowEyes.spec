@@ -2,7 +2,7 @@
 import sys
 from pathlib import Path
 
-from PyInstaller.utils.hooks import collect_data_files, collect_dynamic_libs
+from PyInstaller.utils.hooks import collect_data_files, collect_dynamic_libs, collect_submodules
 
 
 python_root = Path(sys.base_prefix)
@@ -31,6 +31,10 @@ binaries = [
     if (library_bin / name).is_file()
 ]
 binaries += collect_dynamic_libs('onnxruntime')
+binaries += collect_dynamic_libs('c2pa')
+
+hiddenimports = ['resvg_py', 'send2trash']
+hiddenimports += collect_submodules('c2pa')
 
 
 a = Analysis(
@@ -38,7 +42,7 @@ a = Analysis(
     pathex=[],
     binaries=binaries,
     datas=datas,
-    hiddenimports=['resvg_py', 'send2trash'],
+    hiddenimports=hiddenimports,
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],

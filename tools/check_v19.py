@@ -39,16 +39,21 @@ def main() -> None:
 
     icon_path = ROOT / "assets" / "icons" / "croweyes.ico"
     brand_path = ROOT / "assets" / "icons" / "croweyes-1.9.png"
+    c2pa_test_path = ROOT / "test-assets" / "CrowEyes_C2PA_50pct_sample.jpg"
     require(icon_path.is_file() and icon_path.stat().st_size > 50_000, "new ICO missing or too small")
     with Image.open(brand_path) as image:
         require(image.width >= 1024 and image.height >= 1024, "brand icon source is undersized")
     with Image.open(icon_path) as image:
         require(image.format == "ICO", "Windows icon is not ICO")
+    require(c2pa_test_path.is_file(), "C2PA signed runtime test asset is missing")
 
     spec = (ROOT / "CrowEyes.spec").read_text(encoding="utf-8")
     installer = (ROOT / "installer" / "CrowEyes.iss").read_text(encoding="utf-8")
     require("CrowEyes_Image_Viewer_1.9.py" in spec, "spec does not target v1.9")
     require("croweyes-1.9.png" in spec, "new brand asset is not packaged")
+    require("collect_dynamic_libs('c2pa')" in spec, "C2PA native DLL is not packaged")
+    require("collect_submodules('c2pa')" in spec, "C2PA Python modules are not packaged")
+    require('"--c2pa-self-test"' in source, "packaged C2PA self-test entry point is missing")
     require('#define MyAppVersion "1.9"' in installer, "installer version is not 1.9")
     require('Name: "{autodesktop}\\CrowEyes"' in installer, "desktop shortcut name is not CrowEyes")
 
@@ -62,6 +67,8 @@ def main() -> None:
         plain_file = Path(temp_dir) / "plain.jpg"
         plain_file.write_bytes(b"plain-jpeg")
         require(module.c2pa_ai_probability(brand_path)[0] == 100, "valid C2PA AI declaration not detected")
+        require(module.c2pa_ai_probability(c2pa_test_path)[0] == 50,
+                "valid non-AI C2PA declaration not detected")
         require(module.c2pa_ai_probability(plain_file)[0] == 0, "non-C2PA image must remain 0%")
         require("return 25" in source and "return 50" in source and "return 75" in source,
                 "five-step C2PA evidence scale is incomplete")

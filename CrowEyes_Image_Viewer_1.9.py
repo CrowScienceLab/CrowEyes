@@ -6405,6 +6405,9 @@ class CrowEyesImageViewer(tb.Window):
 
 
 def main() -> int:
+    if len(sys.argv) == 3 and sys.argv[1] == "--c2pa-self-test":
+        score, _basis = c2pa_ai_probability(Path(sys.argv[2]))
+        return 0 if C2paReader is not None and score == 50 else 3
     start = sys.argv[1] if len(sys.argv) > 1 else None
     app = CrowEyesImageViewer(start)
     app.mainloop()
