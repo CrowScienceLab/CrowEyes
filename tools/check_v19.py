@@ -56,6 +56,16 @@ def main() -> None:
     require('"--c2pa-self-test"' in source, "packaged C2PA self-test entry point is missing")
     require('#define MyAppVersion "1.9"' in installer, "installer version is not 1.9")
     require('Name: "{autodesktop}\\CrowEyes"' in installer, "desktop shortcut name is not CrowEyes")
+    require('self.after(900, lambda: self.check_for_updates(manual=False))' in source,
+            "startup update check is missing")
+    require("UPDATE_CHECK_INTERVAL" not in source,
+            "startup update check must not be suppressed by an interval")
+    require('text="프로그램 시작 시 새 버전 확인"' in source,
+            "startup update preference label is incorrect")
+    require('MICROSOFT_STORE_ID = "9NNHX36VPSQZ"' in source,
+            "Microsoft Store product ID is missing")
+    require("is_microsoft_store_package()" in source,
+            "Microsoft Store update routing is missing")
 
     spec_obj = importlib.util.spec_from_file_location("croweyes_v19_check", SOURCE)
     require(spec_obj is not None and spec_obj.loader is not None, "cannot load v1.9 module")

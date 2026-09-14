@@ -48,8 +48,18 @@ Setup과 Portable ZIP에 대해 SHA-256을 계산해 다음 형식의 `release\S
 <64자리 hash>  CrowEyes_Portable_1.9_Windows_x64.zip
 ```
 
-사용자 검토가 끝난 뒤 GitHub 공개 릴리스 `v1.9` / `CrowEyes Image Viewer 1.9`에 세 파일을 모두 올립니다. 앱 업데이트 기능은 GitHub latest release를 background thread에서 읽고 numeric version 비교 후 선택한 asset을 임시 폴더에 다운로드합니다. `SHA256SUMS.txt`와 일치하지 않으면 Setup을 실행하지 않습니다. Portable은 자체 교체하지 않고 검증된 ZIP 위치만 엽니다.
+사용자 검토가 끝난 뒤 GitHub 공개 릴리스 `v1.9` / `CrowEyes Image Viewer 1.9`에 세 파일을 모두 올립니다. 앱 업데이트 기능은 프로그램 시작 때 GitHub latest release를 background thread에서 읽고 numeric version 비교 후 사용자 승인을 받습니다. 일반 설치형은 선택한 asset을 임시 폴더에 다운로드하며 `SHA256SUMS.txt`와 일치하지 않으면 Setup을 실행하지 않습니다. Microsoft Store 설치형은 Store 업데이트 페이지를 엽니다. Portable은 자체 교체하지 않고 검증된 ZIP 위치만 엽니다.
 
 ## 6. 코드 서명
 
 현재 인증서가 없어 `CrowEyes.exe`와 Setup EXE는 unsigned 상태입니다. 따라서 Windows SmartScreen 경고 또는 Smart App Control 차단이 발생할 수 있습니다. 무료 배포 방침에서는 이 사실과 공식 다운로드·SHA-256 검증 절차를 `WINDOWS_SECURITY.md`와 앱 내부에 명확히 안내합니다. Smart App Control을 끄도록 자동 유도하거나 Windows 보안 설정을 변경하지 않습니다.
+
+## 7. Microsoft Store MSIX
+
+Partner Center의 CrowEyes 제품 ID는 `9NNHX36VPSQZ`이며 Store 패키지 버전은 GitHub 앱 버전 1.9에 맞춘 `1.9.0.0`입니다. `Microsoft.Windows.SDK.BuildTools`의 `MakeAppx.exe` 경로를 지정하여 다음을 실행합니다.
+
+```powershell
+powershell -ExecutionPolicy Bypass -File tools\build_store_msix.ps1 -MakeAppxPath "<MakeAppx.exe 경로>"
+```
+
+결과물은 `release\CrowEyes_1.9.0.0_x64.msix`입니다. Manifest의 Name, Publisher 및 PublisherDisplayName은 Partner Center 제품 ID 페이지의 값과 정확히 일치해야 합니다.

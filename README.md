@@ -40,7 +40,7 @@ GitHub Releases에서 용도에 맞는 파일을 받습니다.
 - JPG, PNG, GIF, WebP, BMP, TIFF, ICO, PSD, SVG 표시와 실제 PSD 합성 썸네일
 - 실제 SVG의 px/mm/cm/pt/in/viewBox·UTF-8 BOM·UTF-16 처리와 안전한 크기 fallback
 - CrowEyes 인쇄 미리보기 안에서 프린터·방향·용지·매수·파일 출력을 설정하고 중복 Windows 미리보기 없이 직접 인쇄
-- GitHub Releases 기반 수동/24시간 자동 업데이트 확인, 진행률, SHA-256 검증
+- GitHub Releases 기반 수동/프로그램 시작 시 자동 업데이트 확인, 사용자 승인, 진행률, SHA-256 검증
 - CrowEyes Dark와 Bright Sky Blue 테마, 슬라이드쇼, 애니메이션, 확대/회전/반전/밝기/대비
 
 AI 파일은 지원하지 않습니다. EPS는 Ghostscript가 이미 설치된 PC에서만 선택 지원하며 배포본에 Ghostscript를 포함하지 않습니다.
@@ -68,7 +68,7 @@ CrowEyes는 무료로 배포되는 무서명 프로그램입니다. 일부 Windo
 
 ## 업데이트
 
-`더 보기 > 업데이트 확인`을 선택합니다. 새 릴리스가 있으면 배포 형태에 맞는 Setup 또는 Portable ZIP과 `SHA256SUMS.txt`를 내려받아 SHA-256이 일치할 때만 다음 단계로 진행합니다. 설치형은 검증된 Setup을 실행하고, Portable은 실행 파일을 자동 교체하지 않고 ZIP 위치를 엽니다. 설정은 사용자 홈의 `.croweyes_image_viewer.json`에 저장되어 업그레이드 설치로 초기화되지 않습니다.
+CrowEyes는 프로그램을 시작할 때 GitHub의 최신 공개 릴리스를 백그라운드에서 확인하며, `더 보기 > 업데이트 확인`으로 수동 확인할 수도 있습니다. 새 릴리스가 있으면 먼저 사용자 승인을 받습니다. 일반 설치형은 Setup 또는 Portable ZIP과 `SHA256SUMS.txt`를 내려받아 SHA-256이 일치할 때만 다음 단계로 진행하고, Microsoft Store 설치형은 Store 업데이트 페이지를 엽니다. 설정은 사용자 홈의 `.croweyes_image_viewer.json`에 저장되어 업그레이드 설치로 초기화되지 않습니다.
 
 ## 소스 실행과 빌드
 

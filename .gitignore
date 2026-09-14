@@ -9,7 +9,10 @@ build/
 dist/
 release/*.zip
 release/*.exe
+release/*.msix
 release/SHA256SUMS.txt
+store/layout/
+.sdk-tools/
 *.log
 .idea/
 .vscode/

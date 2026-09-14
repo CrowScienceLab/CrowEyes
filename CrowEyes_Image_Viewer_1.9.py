@@ -129,11 +129,13 @@ APP_TITLE = f"{APP_NAME} {APP_VERSION}"
 GITHUB_REPOSITORY = "CrowScienceLab/CrowEyes"
 GITHUB_RELEASES_URL = f"https://api.github.com/repos/{GITHUB_REPOSITORY}/releases/latest"
 GITHUB_RELEASE_PAGE_URL = f"https://github.com/{GITHUB_REPOSITORY}/releases/latest"
+MICROSOFT_STORE_ID = "9NNHX36VPSQZ"
+MICROSOFT_STORE_URI = f"ms-windows-store://pdp/?productid={MICROSOFT_STORE_ID}"
+MICROSOFT_STORE_URL = f"https://apps.microsoft.com/detail/{MICROSOFT_STORE_ID}"
 SMART_APP_CONTROL_HELP_URL = (
     "https://support.microsoft.com/en-us/Windows/Security/threat-malware-protection/"
     "smart-app-control-frequently-asked-questions"
 )
-UPDATE_CHECK_INTERVAL = 24 * 60 * 60
 
 # ---------------------------------------------------------------------------
 # Config
@@ -1219,6 +1221,18 @@ def is_newer_version(latest: str, current: str = APP_VERSION) -> bool:
     left, right = semantic_version(latest), semantic_version(current)
     width = max(len(left), len(right))
     return left + (0,) * (width - len(left)) > right + (0,) * (width - len(right))
+
+
+def is_microsoft_store_package() -> bool:
+    """Return True when CrowEyes is running with an MSIX package identity."""
+    if sys.platform != "win32":
+        return False
+    try:
+        length = ctypes.c_uint32(0)
+        result = ctypes.windll.kernel32.GetCurrentPackageFamilyName(ctypes.byref(length), None)
+        return result in (0, 122)  # ERROR_SUCCESS / ERROR_INSUFFICIENT_BUFFER
+    except (AttributeError, OSError):
+        return False
 
 
 def release_asset(release: dict, pattern: str) -> Optional[dict]:
@@ -2474,9 +2488,7 @@ class CrowEyesImageViewer(tb.Window):
             self.after(250, self._auto_register_file_associations)
 
         if bool(self.settings.get("auto_check_updates", True)):
-            last_check = float(self.settings.get("last_update_check", 0) or 0)
-            if time.time() - last_check >= UPDATE_CHECK_INTERVAL:
-                self.after(900, lambda: self.check_for_updates(manual=False))
+            self.after(900, lambda: self.check_for_updates(manual=False))
 
         self.protocol("WM_DELETE_WINDOW", self._on_close)
 
@@ -5047,7 +5059,7 @@ class CrowEyesImageViewer(tb.Window):
         ).grid(row=7, column=1, sticky="ew")
         ttk.Label(frame, text="슬라이드 간격 (ms)").grid(row=8, column=0, sticky="w", pady=8)
         ttk.Spinbox(frame, from_=200, to=60000, textvariable=slide_var, width=12).grid(row=8, column=1, sticky="w")
-        ttk.Checkbutton(frame, text="프로그램 시작 시 새 버전 확인 (24시간 간격)", variable=update_var).grid(
+        ttk.Checkbutton(frame, text="프로그램 시작 시 새 버전 확인", variable=update_var).grid(
             row=9, column=0, columnspan=2, sticky="w", pady=(6, 0),
         )
         ttk.Separator(frame).grid(row=10, column=0, columnspan=2, sticky="ew", pady=(14, 10))
@@ -5602,6 +5614,17 @@ class CrowEyesImageViewer(tb.Window):
                 messagebox.showinfo("업데이트 확인", f"현재 버전 {APP_VERSION}이 최신입니다.", parent=self)
             return
         self.status.configure(text=f"새 버전 {tag}을 사용할 수 있습니다")
+        if is_microsoft_store_package():
+            if messagebox.askyesno(
+                "CrowEyes 업데이트",
+                f"새 버전 {tag}을 사용할 수 있습니다.\n\nMicrosoft Store에서 업데이트 페이지를 열까요?",
+                parent=self,
+            ):
+                try:
+                    os.startfile(MICROSOFT_STORE_URI)  # type: ignore[attr-defined]
+                except OSError:
+                    webbrowser.open(MICROSOFT_STORE_URL)
+            return
         if messagebox.askyesno(
             "CrowEyes 업데이트",
             f"새 버전 {tag}을 사용할 수 있습니다.\n\n다운로드하고 SHA-256을 확인할까요?",
