@@ -80,7 +80,7 @@ Python 3.10 이상에서 다음을 실행합니다.
 
 ```bat
 python -m pip install -r requirements.txt
-python CrowEyes_Image_Viewer_1.9.py
+python CrowEyes_Image_Viewer_1.9e.py
 ```
 
 검사·PyInstaller·Inno Setup 빌드 방법은 [BUILD.md](BUILD.md)를 참고하십시오.
