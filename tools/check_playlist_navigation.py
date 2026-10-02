@@ -12,7 +12,7 @@ from PIL import Image
 
 
 ROOT = Path(__file__).resolve().parents[1]
-SOURCE = ROOT / "CrowEyes_Image_Viewer_1.7.py"
+SOURCE = ROOT / "CrowEyes_Image_Viewer_1.9e.py"
 
 
 def load_viewer_module():
@@ -46,6 +46,7 @@ def main() -> None:
         viewer = module.CrowEyesImageViewer()
         viewer.withdraw()
         viewer.current_folder = folder
+        viewer._folder_dirs = module.list_subdirs(folder)
         viewer.folder_files = files
         viewer.index = 0
         viewer.list_mode = "icons"

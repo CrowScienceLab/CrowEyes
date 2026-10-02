@@ -14,7 +14,7 @@ from PIL import Image
 
 
 ROOT = Path(__file__).resolve().parents[1]
-SOURCE = ROOT / "CrowEyes_Image_Viewer_1.7.py"
+SOURCE = ROOT / "CrowEyes_Image_Viewer_1.9e.py"
 
 
 def load_viewer_module():
@@ -56,6 +56,7 @@ def main() -> None:
         viewer.geometry("1200x760")
         assert viewer.title() == module.APP_TITLE
         viewer.current_folder = folder
+        viewer._folder_dirs = module.list_subdirs(folder)
         viewer.folder_files = files
         viewer.index = 0
         viewer._populate_list_names_only()
@@ -92,10 +93,11 @@ def main() -> None:
         viewer.update_idletasks()
         assert len(viewer._toolbar_buttons) >= 12
         assert viewer._brand_label.cget("text") == "CrowEyes"
-        assert viewer._icons["eye"].width() == 66
-        assert viewer._icons["eye"].height() == 44
+        assert viewer._icons["eye"].width() == 48
+        assert viewer._icons["eye"].height() == 48
         assert all(hasattr(button, "_croweyes_tooltip") for button in viewer._toolbar_buttons)
-        assert all(not re.search(r"[가-힣]", str(button.cget("text"))) for button in viewer._toolbar_buttons), "toolbar contains Korean text"
+        assert all(re.search(r"[가-힣]", str(button.cget("text"))) for button in viewer._toolbar_buttons), "toolbar command caption is missing"
+        assert all(viewer.tk.call('image', 'width', button.cget('image')[0]) == 36 for button in viewer._toolbar_buttons)
         assert "Ctrl+O" in viewer._toolbar_buttons[0]._croweyes_tooltip.text
         hover_button = viewer._toolbar_buttons[0]
         hover_geometry = (hover_button.winfo_x(), hover_button.winfo_y(), hover_button.winfo_width(), hover_button.winfo_height())
@@ -115,18 +117,16 @@ def main() -> None:
         viewer.update_idletasks()
         buttons_after = tuple(button.winfo_rootx() for button in viewer._toolbar_buttons)
         assert buttons_after == buttons_before, (buttons_before, buttons_after)
-        assert all(left < right for left, right in zip(buttons_after, buttons_after[1:]))
-        gaps = [
-            right.winfo_rootx() - (left.winfo_rootx() + left.winfo_width())
-            for left, right in zip(viewer._toolbar_buttons, viewer._toolbar_buttons[1:])
-        ]
-        assert max(gaps) <= 16, gaps  # deliberate 4px button gaps and 14px separators
+        for row in {button.grid_info()['row'] for button in viewer._toolbar_buttons}:
+            buttons = [button for button in viewer._toolbar_buttons if button.grid_info()['row'] == row]
+            assert all(left.winfo_rootx() + left.winfo_width() <= right.winfo_rootx()
+                       for left, right in zip(buttons, buttons[1:])), 'toolbar commands overlap'
         assert viewer._toolbar_buttons[-1].winfo_rootx() + viewer._toolbar_buttons[-1].winfo_width() < viewer.winfo_rootx() + viewer.winfo_width()
-        assert viewer._icons["previous"].width() == 20
+        assert viewer._icons["previous"].width() == 24
         toolbar_images = {str(button.cget("image")) for button in viewer._toolbar_buttons}
         assert str(viewer._icons["previous"]) not in toolbar_images
         assert str(viewer._icons["next"]) not in toolbar_images
-        assert viewer._icons["eye"].width() == 66
+        assert viewer._icons["eye"].width() == 48
         assert viewer.toolbar.winfo_rooty() < viewer.navigation_bar.winfo_rooty()
         viewer.toggle_image_fullscreen()
         pump(viewer, 20)
@@ -138,8 +138,9 @@ def main() -> None:
         # minimum window width without hiding the final overflow menu.
         viewer.geometry("860x520")
         pump(viewer, 30)
-        toolbar_right = viewer._toolbar_buttons[-1].winfo_rootx() + viewer._toolbar_buttons[-1].winfo_width()
+        toolbar_right = max(button.winfo_rootx() + button.winfo_width() for button in viewer._toolbar_buttons)
         assert toolbar_right <= viewer.winfo_rootx() + viewer.winfo_width(), toolbar_right
+        assert all(button.winfo_ismapped() and button.cget('text') for button in viewer._toolbar_buttons)
         assert viewer._zoom_label.winfo_rootx() > viewer.status.winfo_rootx()
         assert viewer._path_label.winfo_rootx() > viewer._zoom_label.winfo_rootx()
         assert viewer._brightness_scale.winfo_rootx() > viewer._path_label.winfo_rootx()
@@ -147,7 +148,7 @@ def main() -> None:
         assert viewer._contrast_scale.winfo_width() <= 60
         viewer.set_ui_theme("bright_sky_blue")
         pump(viewer, 80)
-        toolbar_right = viewer._toolbar_buttons[-1].winfo_rootx() + viewer._toolbar_buttons[-1].winfo_width()
+        toolbar_right = max(button.winfo_rootx() + button.winfo_width() for button in viewer._toolbar_buttons)
         assert toolbar_right <= viewer.winfo_rootx() + viewer.winfo_width(), "theme rebuild lost responsive layout"
         assert viewer._toolbar_buttons[-1].winfo_ismapped(), "More menu disappeared after theme rebuild"
 
@@ -167,7 +168,7 @@ def main() -> None:
         viewer.update_idletasks()
         assert (viewer._canvas_prev_btn.winfo_width(), viewer._canvas_prev_btn.winfo_height()) == before_edge_geometry
         viewer._canvas_prev_btn.event_generate("<Leave>")
-        assert viewer._top_search.winfo_height() <= 30
+        assert viewer._top_search.winfo_height() <= round(30 * float(viewer.tk.call("tk", "scaling")) / (96/72))
         assert hasattr(viewer, "_playlist_close_btn")
         assert not hasattr(viewer, "_playlist_summary_var")
         viewer._on_motion(SimpleNamespace(

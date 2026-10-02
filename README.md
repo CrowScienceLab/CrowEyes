@@ -1,13 +1,17 @@
 # CrowEyes Image Viewer
 
-CrowEyes 1.9는 가볍고 빠른 Windows 이미지 뷰어에 파일 탐색·관리·출력, C2PA 기반 AI 출처 표시와 선택형 로컬 성인용 컨텐츠 차단 기능을 연결한 Windows 10/11 x64용 데스크톱 프로그램입니다. 제작자는 Crow Science Lab입니다.
+CrowEyes 1.9e는 가볍고 빠른 Windows 이미지 뷰어에 파일 탐색·관리·출력, 영역 캡처·크기 변경 저장, C2PA 출처 근거 표시와 선택형 로컬 성인용 컨텐츠 차단 기능을 연결한 Windows 10/11 x64용 데스크톱 프로그램입니다. 제작자는 Crow Science Lab입니다.
+
+## 1.9e 주요 변경
+
+[변경 내역](RELEASE_NOTES_v1.9e.md). **더보기** 또는 이미지 우클릭 메뉴에서 영역 저장·복사와 크기·비율 변경을 사용할 수 있습니다. 상단은 36px 아이콘과 한글 기능명으로 표시하며 창 크기에 따라 자동 줄바꿈합니다.
 
 ## 다운로드
 
-GitHub Releases에서 용도에 맞는 파일을 받습니다.
+[GitHub v1.9e 릴리스](https://github.com/CrowScienceLab/CrowEyes/releases/tag/v1.9e)에서 용도에 맞는 파일을 받습니다. [Microsoft Store](https://apps.microsoft.com/detail/9NNHX36VPSQZ)에서도 사용할 수 있으며 Store 업데이트는 Microsoft 인증 후 반영됩니다.
 
-- 설치형: `CrowEyes_Setup_1.9_Windows_x64.exe`
-- 무설치형: `CrowEyes_Portable_1.9_Windows_x64.zip`
+- 설치형: `CrowEyes_Setup_1.9e_Windows_x64.exe`
+- 무설치형: `CrowEyes_Portable_1.9e_Windows_x64.zip`
 - 무결성 값: `SHA256SUMS.txt`
 
 설치형은 관리자 권한이 필요 없는 사용자별 경로 `%LOCALAPPDATA%\Programs\CrowEyes`를 기본으로 사용하며 설치 위치를 바꿀 수 있습니다. Portable ZIP은 압축을 푼 뒤 `CrowEyes.exe`를 실행하면 되며 Python 설치가 필요하지 않습니다.
@@ -15,7 +19,7 @@ GitHub Releases에서 용도에 맞는 파일을 받습니다.
 ## 1.9 주요 기능
 
 - Crow 제품군과 통일된 새 앱 아이콘 및 24px 기능 아이콘
-- C2PA 선언만 사용하는 AI 이미지 확률 표시
+- C2PA 선언에 따른 AI 출처 근거 표시(통계적 확률 아님)
 - White + Light Pink 테마 추가, Black 테마 기본값 유지
 - Image Info의 중복 파일명·전체 경로 제거
 - 성인용 컨텐츠 차단 문구로 정비

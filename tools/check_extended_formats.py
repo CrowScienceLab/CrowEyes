@@ -14,7 +14,7 @@ from PIL import Image
 
 
 ROOT = Path(__file__).resolve().parents[1]
-SOURCE = ROOT / "CrowEyes_Image_Viewer_1.7.py"
+SOURCE = ROOT / "CrowEyes_Image_Viewer_1.9e.py"
 spec = importlib.util.spec_from_file_location("croweyes_v17", SOURCE)
 assert spec and spec.loader
 app = importlib.util.module_from_spec(spec)
@@ -107,7 +107,7 @@ def check_psd_thumbnail(path: Path) -> None:
     original_photo_image = app.ImageTk.PhotoImage
     app.ImageTk.PhotoImage = lambda image: image
     try:
-        thumbnail = viewer._make_thumb(path, 96)
+        thumbnail = viewer._make_thumb_pil(path, 96)
     finally:
         app.ImageTk.PhotoImage = original_photo_image
     require(thumbnail is not placeholder, "PSD playlist thumbnail fell back to the placeholder")
@@ -180,7 +180,7 @@ def main() -> None:
         check_psd(normal, "normal PSD")
         check_psd(large, "large PSD")
         check_psd_thumbnail(normal)
-    print("PASS v1.7 extended formats, print layout, and raster regression checks")
+    print("PASS v1.9e extended formats, print layout, and raster regression checks")
 
 
 if __name__ == "__main__":

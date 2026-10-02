@@ -38,7 +38,7 @@ hiddenimports += collect_submodules('c2pa')
 
 
 a = Analysis(
-    ['CrowEyes_Image_Viewer_1.9.py'],
+    ['CrowEyes_Image_Viewer_1.9e.py'],
     pathex=[],
     binaries=binaries,
     datas=datas,

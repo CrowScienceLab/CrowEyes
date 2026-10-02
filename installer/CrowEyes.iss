@@ -1,12 +1,16 @@
 #define MyAppName "CrowEyes Image Viewer"
-#define MyAppVersion "1.9"
+#define MyAppVersion "1.9e"
 #define MyAppPublisher "Crow Science Lab"
 #define MyAppExeName "CrowEyes.exe"
+#ifndef MyDistDir
+  #define MyDistDir "..\dist\CrowEyes"
+#endif
 
 [Setup]
 AppId={{1DE942C5-2E41-4771-B02C-0E18414B5D15}
 AppName={#MyAppName}
 AppVersion={#MyAppVersion}
+VersionInfoVersion=1.9.1.0
 AppVerName={#MyAppName} {#MyAppVersion}
 AppPublisher={#MyAppPublisher}
 DefaultDirName={localappdata}\Programs\CrowEyes
@@ -16,7 +20,7 @@ PrivilegesRequired=lowest
 ArchitecturesAllowed=x64compatible
 ArchitecturesInstallIn64BitMode=x64compatible
 OutputDir=..\release
-OutputBaseFilename=CrowEyes_Setup_1.9_Windows_x64
+OutputBaseFilename=CrowEyes_Setup_1.9e_Windows_x64
 SetupIconFile=..\assets\icons\croweyes.ico
 UninstallDisplayIcon={app}\{#MyAppExeName}
 Compression=lzma2/ultra64
@@ -34,7 +38,7 @@ Name: "english"; MessagesFile: "compiler:Default.isl"
 Name: "desktopicon"; Description: "바탕 화면 바로가기 만들기"; GroupDescription: "추가 바로가기:"; Flags: unchecked
 
 [Files]
-Source: "..\dist\CrowEyes\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
+Source: "{#MyDistDir}\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
 Source: "..\WINDOWS_SECURITY.md"; DestDir: "{app}"; Flags: ignoreversion
 Source: "..\THIRD_PARTY_NOTICES.md"; DestDir: "{app}"; Flags: ignoreversion
 Source: "..\licenses\*"; DestDir: "{app}\licenses"; Flags: ignoreversion

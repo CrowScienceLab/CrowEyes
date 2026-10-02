@@ -4,7 +4,7 @@
   xmlns:uap="http://schemas.microsoft.com/appx/manifest/uap/windows10"
   xmlns:rescap="http://schemas.microsoft.com/appx/manifest/foundation/windows10/restrictedcapabilities"
   IgnorableNamespaces="uap rescap">
-  <Identity Name="170231F2.CrowEyes" Publisher="CN=2953C017-B9C7-4852-BD5D-ABFF600E3840" Version="1.9.0.0" ProcessorArchitecture="x64" />
+  <Identity Name="170231F2.CrowEyes" Publisher="CN=2953C017-B9C7-4852-BD5D-ABFF600E3840" Version="1.9.1.0" ProcessorArchitecture="x64" />
   <Properties>
     <DisplayName>CrowEyes</DisplayName>
     <PublisherDisplayName>까마구</PublisherDisplayName>
