@@ -127,6 +127,8 @@ def _tk_init_with_anaconda_msgcat(root: tk.Tk, *args, **kwargs) -> None:
 
 APP_NAME = "CrowEyes Image Viewer"
 APP_VERSION = "1.9e"
+# Numeric release version keeps updates discoverable by legacy numeric-only clients.
+APP_UPDATE_VERSION = "1.9.1"
 APP_TITLE = f"{APP_NAME} {APP_VERSION}"
 GITHUB_REPOSITORY = "CrowScienceLab/CrowEyes"
 GITHUB_RELEASES_URL = f"https://api.github.com/repos/{GITHUB_REPOSITORY}/releases/latest"
@@ -1087,7 +1089,7 @@ def semantic_version(value: str) -> Tuple[int, ...]:
     return numbers + (0,) * (4 - len(numbers)) + (revision,)
 
 
-def is_newer_version(latest: str, current: str = APP_VERSION) -> bool:
+def is_newer_version(latest: str, current: str = APP_UPDATE_VERSION) -> bool:
     left, right = semantic_version(latest), semantic_version(current)
     width = max(len(left), len(right))
     return left + (0,) * (width - len(left)) > right + (0,) * (width - len(right))
@@ -5499,7 +5501,7 @@ class CrowEyesImageViewer(tb.Window):
             return
         release = payload
         tag = str(release.get("tag_name", ""))
-        if not is_newer_version(tag, APP_VERSION):
+        if not is_newer_version(tag, APP_UPDATE_VERSION):
             self.status.configure(text=f"CrowEyes {APP_VERSION}이 최신 버전입니다")
             if manual:
                 messagebox.showinfo("업데이트 확인", f"현재 버전 {APP_VERSION}이 최신입니다.", parent=self)

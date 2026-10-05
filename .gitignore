@@ -12,6 +12,7 @@ release/*.exe
 release/*.msix
 release/SHA256SUMS.txt
 release/review-v*/
+release/update-v*/
 store/layout/
 .sdk-tools/
 *.log

@@ -8,7 +8,9 @@ CrowEyes 1.9e는 가볍고 빠른 Windows 이미지 뷰어에 파일 탐색·관
 
 ## 다운로드
 
-[GitHub v1.9e 릴리스](https://github.com/CrowScienceLab/CrowEyes/releases/tag/v1.9e)에서 용도에 맞는 파일을 받습니다. [Microsoft Store](https://apps.microsoft.com/detail/9NNHX36VPSQZ)에서도 사용할 수 있으며 Store 업데이트는 Microsoft 인증 후 반영됩니다.
+[GitHub 최신 릴리스](https://github.com/CrowScienceLab/CrowEyes/releases/latest)에서 용도에 맞는 파일을 받습니다. [Microsoft Store](https://apps.microsoft.com/detail/9NNHX36VPSQZ)에서도 사용할 수 있으며 Store 업데이트는 Microsoft 인증 후 반영됩니다.
+
+2026-10-06 업데이트 호환 패치: 제품 표시 버전은 **1.9e**, GitHub 업데이트 태그는 **v1.9.1**입니다. 기존 1.9의 비교기가 문자 접미사를 무시해 1.9e를 같은 버전으로 판단하던 문제를 숫자 태그로 해결했습니다. 패치 프로그램도 숫자 업데이트 버전 1.9.1을 사용하므로 설치 후 같은 업데이트를 반복 안내하지 않습니다. 시작 시 새 버전을 안내하며, 사용자가 동의하면 다운로드·검증 후 설치를 진행합니다. Portable은 검증된 ZIP을 직접 교체합니다.
 
 - 설치형: `CrowEyes_Setup_1.9e_Windows_x64.exe`
 - 무설치형: `CrowEyes_Portable_1.9e_Windows_x64.zip`

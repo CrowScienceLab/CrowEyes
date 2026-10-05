@@ -27,3 +27,9 @@
 검토용 실행 파일: `dist/review-v1.9e/CrowEyes/CrowEyes.exe`
 
 검토용 패키지: `release/review-v1.9e/`의 Portable ZIP, Setup EXE, MSIX 및 SHA256SUMS.txt.
+## 2026-10-06 업데이트 호환 패치 (GitHub v1.9.1)
+
+- 기존 1.9 프로그램이 문자 접미사 `e`를 무시하여 1.9e를 같은 버전으로 판단하는 문제를 해결하기 위해 숫자 릴리스 태그 `v1.9.1`을 사용합니다.
+- 제품 표시 버전은 1.9e를 유지하고 업데이트 비교 기준을 1.9.1로 분리해 설치 후 반복 알림을 방지했습니다.
+- 설치형·Portable과 SHA256SUMS.txt를 패치 소스로 다시 빌드했습니다. 이전 v1.9e 릴리스는 이력으로 보존합니다.
+

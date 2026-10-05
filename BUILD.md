@@ -49,7 +49,7 @@ Setup과 Portable ZIP에 대해 SHA-256을 계산해 다음 형식의 `release\S
 <64자리 hash>  CrowEyes_Portable_1.9e_Windows_x64.zip
 ```
 
-사용자 검토가 끝난 뒤 GitHub 공개 릴리스 `v1.9e` / `CrowEyes Image Viewer 1.9e`에 세 파일을 모두 올립니다. 앱 업데이트 기능은 프로그램 시작 때 GitHub latest release를 background thread에서 읽고 numeric version 비교 후 사용자 승인을 받습니다. 일반 설치형은 선택한 asset을 임시 폴더에 다운로드하며 `SHA256SUMS.txt`와 일치하지 않으면 Setup을 실행하지 않습니다. Microsoft Store 설치형은 Store 업데이트 페이지를 엽니다. Portable은 자체 교체하지 않고 검증된 ZIP 위치만 엽니다.
+GitHub 공개 릴리스 `v1.9.1` / `CrowEyes Image Viewer 1.9e — 업데이트 호환 패치`에 세 파일을 모두 올립니다. 제품 표시 버전 `APP_VERSION=1.9e`와 숫자 업데이트 버전 `APP_UPDATE_VERSION=1.9.1`을 구분합니다. 기존 1.9 비교기는 문자 접미사를 무시하므로 이후 릴리스에도 숫자 태그를 사용하고 APP_UPDATE_VERSION을 함께 증가시켜야 합니다. `tools/check_update_compatibility.py`로 기존 프로그램의 발견 및 패치 후 반복 알림 방지를 검증합니다. 앱 업데이트 기능은 프로그램 시작 때 GitHub latest release를 background thread에서 읽고 numeric version 비교 후 사용자 승인을 받습니다. 일반 설치형은 선택한 asset을 임시 폴더에 다운로드하며 `SHA256SUMS.txt`와 일치하지 않으면 Setup을 실행하지 않습니다. Microsoft Store 설치형은 Store 업데이트 페이지를 엽니다. Portable은 자체 교체하지 않고 검증된 ZIP 위치만 엽니다.
 
 ## 6. 코드 서명
 
