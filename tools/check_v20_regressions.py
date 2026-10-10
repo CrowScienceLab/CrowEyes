@@ -1,0 +1,15 @@
+"""Run established viewer regressions against the new source and public class."""
+from pathlib import Path
+import subprocess
+import sys
+
+ROOT=Path(__file__).resolve().parents[1]
+names = (sys.argv[1],) if len(sys.argv)>1 else ('check_theme_contrast.py','check_playlist_navigation.py','check_slideshow_toolbar.py','check_extended_formats.py')
+for name in names:
+    if len(sys.argv)==1:
+        subprocess.run([sys.executable,__file__,name],check=True)
+        continue
+    path=ROOT/'tools'/name
+    source=path.read_text(encoding='utf-8').replace('CrowEyes_Image_Viewer_1.9e.py','CrowEyes_Image_Viewer_2.0.py')
+    print('RUN:',name,flush=True)
+    exec(compile(source,str(path),'exec'),{'__file__':str(path),'__name__':'__main__'})

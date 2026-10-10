@@ -9,7 +9,8 @@ $ErrorActionPreference = "Stop"
 $root = Split-Path -Parent $PSScriptRoot
 $layout = Join-Path $root "store\layout"
 $assets = Join-Path $layout "Assets"
-$package = Join-Path $root "release\CrowEyes_1.9.1.0_x64.msix"
+$versionData = Get-Content -LiteralPath (Join-Path $root 'version.json') -Raw | ConvertFrom-Json
+$package = Join-Path $root ("release\CrowEyes_" + $versionData.store_version + "_x64.msix")
 $python = if ($PythonPath) { $PythonPath } else { Join-Path $root ".publish-venv\Scripts\python.exe" }
 $distribution = if ($DistributionPath) { $DistributionPath } else { Join-Path $root 'dist\CrowEyes' }
 

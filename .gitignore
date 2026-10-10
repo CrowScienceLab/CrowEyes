@@ -15,6 +15,7 @@ release/review-v*/
 release/update-v*/
 store/layout/
 .sdk-tools/
+.optional-vendor/
 *.log
 .idea/
 .vscode/

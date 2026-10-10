@@ -274,7 +274,8 @@ class SafetyManager:
                 return self._session
             if not self.model_path.is_file():
                 raise FileNotFoundError(f"콘텐츠 안전 모델이 없습니다: {self.model_path}")
-            import onnxruntime as ort  # Lazy: never imported while filter is OFF.
+            from croweyes_extensions import load_optional
+            ort = load_optional('safety', 'onnxruntime')
 
             options = ort.SessionOptions()
             options.intra_op_num_threads = max(1, min(2, os.cpu_count() or 1))

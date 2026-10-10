@@ -1,5 +1,5 @@
 #define MyAppName "CrowEyes Image Viewer"
-#define MyAppVersion "1.9e"
+#define MyAppVersion "2.0.0"
 #define MyAppPublisher "Crow Science Lab"
 #define MyAppExeName "CrowEyes.exe"
 #ifndef MyDistDir
@@ -10,7 +10,7 @@
 AppId={{1DE942C5-2E41-4771-B02C-0E18414B5D15}
 AppName={#MyAppName}
 AppVersion={#MyAppVersion}
-VersionInfoVersion=1.9.1.0
+VersionInfoVersion=2.0.0.0
 AppVerName={#MyAppName} {#MyAppVersion}
 AppPublisher={#MyAppPublisher}
 DefaultDirName={localappdata}\Programs\CrowEyes
@@ -20,7 +20,7 @@ PrivilegesRequired=lowest
 ArchitecturesAllowed=x64compatible
 ArchitecturesInstallIn64BitMode=x64compatible
 OutputDir=..\release
-OutputBaseFilename=CrowEyes_Setup_1.9e_Windows_x64
+OutputBaseFilename=CrowEyes_Setup_2.0.0_Windows_x64
 SetupIconFile=..\assets\icons\croweyes.ico
 UninstallDisplayIcon={app}\{#MyAppExeName}
 Compression=lzma2/ultra64

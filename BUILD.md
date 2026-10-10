@@ -1,4 +1,6 @@
-# CrowEyes Image Viewer 1.9e 빌드 및 릴리스
+# CrowEyes 빌드 안내
+
+현행 2.0은 [docs/BUILD_V2.md](docs/BUILD_V2.md)를 따릅니다. 아래는 이전 1.9e 빌드 기록이며 현행 선택 모듈 구성과 다릅니다.
 
 ## 1. Clean venv
 

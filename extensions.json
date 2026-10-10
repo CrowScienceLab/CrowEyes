@@ -1,0 +1,22 @@
+{
+  "provenance": {
+    "filename": "CrowEyes_Module_provenance_2.0.0_Windows_x64.zip",
+    "sha256": "da225b29477a6e63e5740c005d0022a9752e73fae8d0904ce1bb5213782b3404",
+    "version": "2.0.0"
+  },
+  "safety": {
+    "filename": "CrowEyes_Module_safety_2.0.0_Windows_x64.zip",
+    "sha256": "5494fb4a08aaad7f9df1fb0ae2cc3dff8801d38948b773812e6d4a450f093c4f",
+    "version": "2.0.0"
+  },
+  "formats": {
+    "filename": "CrowEyes_Module_formats_2.0.0_Windows_x64.zip",
+    "sha256": "a78a30338f481dc29ddc92db952646c70e73c7063de5ed2ff93ff6a92c4cddef",
+    "version": "2.0.0"
+  },
+  "semantic": {
+    "filename": "CrowEyes_Module_semantic_2.0.0_Windows_x64.zip",
+    "sha256": "a66c367499baab72f860777dfc08c75cc0faf6464fc4e16338364baf634c1142",
+    "version": "2.0.0"
+  }
+}

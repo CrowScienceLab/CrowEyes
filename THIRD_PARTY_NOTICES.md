@@ -1,7 +1,17 @@
 # CrowEyes third-party notices
 
-CrowEyes Image Viewer 1.8 includes the following components for its optional,
-fully local content-safety feature.
+CrowEyes 2.0 separates optional native libraries and AI models from the core.
+Package license files are retained in each optional ZIP and the core distribution.
+
+## Optional provenance, RAW and semantic search
+
+- c2pa-python 0.37.10: https://github.com/contentauth/c2pa-python; MIT/Apache-2.0 notices in its package.
+- rawpy 0.27.1: https://github.com/letmaik/rawpy; MIT wrapper and bundled LibRaw notices retained in rawpy distribution metadata.
+- NumPy 2.5.2: https://numpy.org; BSD license and bundled OpenBLAS notices retained.
+- tokenizers 0.23.3: https://github.com/huggingface/tokenizers; Apache-2.0 notices retained.
+- Quantized CLIP: https://huggingface.co/Xenova/clip-vit-base-patch32, pinned revision d15189d7028b43f1d3e65039190477f6af591c2a. Based on OpenAI CLIP (https://github.com/openai/CLIP), MIT. Model source, revision, SHA-256 values and license are included in models/clip/SOURCE.json and LICENSE in the semantic module.
+- HEIC uses installed Windows codecs. No pillow-heif/libheif/libx265 binary is shipped. Windows codec licenses and availability are managed separately by Windows/Microsoft Store.
+- OCR uses installed Windows.Media.Ocr language components; no OCR model is bundled.
 
 ## NudeNet ONNX model
 

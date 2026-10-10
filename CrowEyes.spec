@@ -1,11 +1,16 @@
 # -*- mode: python ; coding: utf-8 -*-
 import sys
+import json
 from pathlib import Path
+from PyInstaller.utils.win32.versioninfo import VSVersionInfo, FixedFileInfo, StringFileInfo, StringTable, StringStruct, VarFileInfo, VarStruct
 
 from PyInstaller.utils.hooks import collect_data_files, collect_dynamic_libs, collect_submodules
 
 
 python_root = Path(sys.base_prefix)
+release_version=json.loads(Path('version.json').read_text())['version']
+version_tuple=tuple(map(int,release_version.split('.')))+(0,)
+pe_version=VSVersionInfo(ffi=FixedFileInfo(filevers=version_tuple,prodvers=version_tuple,mask=0x3f,flags=0,OS=0x40004,fileType=1,subtype=0,date=(0,0)),kids=[StringFileInfo([StringTable('040904b0',[StringStruct('CompanyName','Crow Science Lab'),StringStruct('FileDescription','CrowEyes Image Viewer'),StringStruct('FileVersion',release_version),StringStruct('ProductName','CrowEyes'),StringStruct('ProductVersion',release_version),StringStruct('OriginalFilename','CrowEyes.exe')])]),VarFileInfo([VarStruct('Translation',[1033,1200])])])
 library_bin = python_root / 'Library' / 'bin'
 msgcat = python_root / 'Library' / 'lib' / 'tcl8' / '8.5' / 'msgcat-1.6.1.tm'
 
@@ -16,7 +21,10 @@ datas += [
     (str(Path('assets/icons/croweyes-1.9.png').resolve()), 'assets/icons'),
     (str(Path('assets/icons/croweyes.ico').resolve()), 'assets/icons'),
     (str(Path('assets/safety/content_blocked_crow.webp').resolve()), 'assets/safety'),
-    (str(Path('assets/models/nudenet-320n.onnx').resolve()), 'assets/models'),
+    (str(Path('version.json').resolve()), '.'),
+    (str(Path('extensions.json').resolve()), '.'),
+    (str(Path('tools/windows_ocr.ps1').resolve()), 'tools'),
+    (str(Path('tools/windows_heic.ps1').resolve()), 'tools'),
     (str(Path('THIRD_PARTY_NOTICES.md').resolve()), '.'),
     (str(Path('licenses').resolve()), 'licenses'),
 ]
@@ -30,15 +38,12 @@ binaries = [
     for name in runtime_dlls
     if (library_bin / name).is_file()
 ]
-binaries += collect_dynamic_libs('onnxruntime')
-binaries += collect_dynamic_libs('c2pa')
 
 hiddenimports = ['resvg_py', 'send2trash']
-hiddenimports += collect_submodules('c2pa')
 
 
 a = Analysis(
-    ['CrowEyes_Image_Viewer_1.9e.py'],
+    ['CrowEyes_Image_Viewer_2.0.py'],
     pathex=[],
     binaries=binaries,
     datas=datas,
@@ -46,7 +51,7 @@ a = Analysis(
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],
-    excludes=[],
+    excludes=['c2pa', 'onnxruntime', 'numpy', 'rawpy', 'pillow_heif', 'cryptography', 'tokenizers'],
     noarchive=False,
     optimize=0,
 )
@@ -69,6 +74,7 @@ exe = EXE(
     codesign_identity=None,
     entitlements_file=None,
     icon=['assets\\icons\\croweyes.ico'],
+    version=pe_version,
 )
 coll = COLLECT(
     exe,
