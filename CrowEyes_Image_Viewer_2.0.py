@@ -1310,11 +1310,11 @@ class CrowEyesIconSet:
             "flip_v", "brightness", "contrast", "theme", "panel", "shortcuts",
             "slideshow", "close", "print", "up", "refresh", "search", "view",
             "sort", "ascending", "descending", "copy", "delete", "rename", "location",
-            "computer",
+            "computer", "undo", "redo", "compare",
         )
         for name in toolbar_icons:
             self.images[name] = self._render(name, 24)
-            self.images["toolbar_" + name] = self._render(name, 36, toolbar=True)
+            self.images["toolbar_" + name] = self._render(name, 32, toolbar=True)
         self.images["eye"] = self._load_brand_eye()
         self.images["eye_large"] = self._load_brand_eye(88)
         self.images["folder_large"] = self._render("folder", 52)
@@ -1330,7 +1330,7 @@ class CrowEyesIconSet:
         return (int(value[0:2], 16), int(value[2:4], 16), int(value[4:6], 16), 255)
 
     def _load_brand_eye(self, size: int = 48) -> ImageTk.PhotoImage:
-        path = resource_path("assets", "icons", "croweyes-1.9.png")
+        path = resource_path("assets", "icons", "croweyes-2.0.png")
         try:
             with Image.open(path) as opened:
                 logo = opened.convert("RGBA")
@@ -1399,6 +1399,14 @@ class CrowEyesIconSet:
         elif name == "up":
             poly([(size * .22, size * .55), (size * .50, size * .27), (size * .78, size * .55)])
             poly([(size * .50, size * .28), (size * .50, size * .82)], accent)
+        elif name in {"undo", "redo"}:
+            flip=1 if name=='undo' else -1
+            def px(x):return x if flip==1 else size-x
+            poly([(px(size*.18),size*.42),(px(size*.62),size*.42),(px(size*.82),size*.60),(px(size*.75),size*.78)])
+            poly([(px(size*.35),size*.22),(px(size*.15),size*.42),(px(size*.35),size*.62)],accent)
+        elif name == "compare":
+            rectangle((size*.12,size*.18,size*.88,size*.82),outline=fg,radius=size*.04)
+            poly([(size*.50,size*.18),(size*.50,size*.82)],accent)
         elif name == "refresh":
             draw.arc(tuple(int(v * s) for v in (size*.16, size*.16, size*.84, size*.84)), 30, 325, fill=fg, width=line)
             draw.polygon([(int(size*.72*s), int(size*.13*s)), (int(size*.91*s), int(size*.18*s)),
@@ -1820,7 +1828,7 @@ class PlaylistPanel(ttk.Frame):
         self.viewer = viewer
         header = ttk.Frame(self, style="Panel.TFrame")
         header.pack(fill=tk.X)
-        ttk.Label(header, text="PLAYLIST", style="Section.TLabel").pack(side=tk.LEFT)
+        ttk.Label(header, text="파일 목록", style="Section.TLabel").pack(side=tk.LEFT)
         close = tk.Button(
             header, image=viewer._icons["close"], command=viewer.hide_playlist_panel,
             bd=0, relief=tk.FLAT, cursor="hand2", padx=4, pady=4,
@@ -1882,7 +1890,7 @@ class InfoPanel(ttk.Frame):
         super().__init__(master, style="Card.TFrame", padding=0)
         title = ttk.Frame(self, style="Panel.TFrame", padding=(12, 10))
         title.pack(fill=tk.X)
-        ttk.Label(title, text="IMAGE INFO", style="Section.TLabel").pack(side=tk.LEFT)
+        ttk.Label(title, text="사진 정보", style="Section.TLabel").pack(side=tk.LEFT)
         close = tk.Button(
             title, image=viewer._icons["close"], command=viewer.hide_info_panel,
             bd=0, relief=tk.FLAT, cursor="hand2", padx=4, pady=4,
@@ -2115,7 +2123,7 @@ class CrowEyesImageViewer(tb.Window):
         self._icons = CrowEyesIconSet(self, self._theme())
         self.iconphoto(True, self._icons["app"])
         try:
-            self.iconbitmap(default=str(resource_path("assets", "icons", "croweyes.ico")))
+            self.iconbitmap(default=str(resource_path("assets", "icons", "croweyes-2.0.ico")))
         except (OSError, tk.TclError):
             pass
         self.title(APP_TITLE)
@@ -6251,7 +6259,7 @@ class CrowEyesImageViewer(tb.Window):
             resolution_text += f" · 렌더 {self.pil_image.width} × {self.pil_image.height}"
         provenance = getattr(self, "_provenance_values", {}).get(str(path), {})
         data = [
-            ("출처 정보 · C2PA", provenance.get("credential", "선택 기능 · 작업 도구에서 확인")),
+            ("출처 정보 · C2PA", provenance.get("credential", "선택 기능 · 도구 메뉴에서 확인")),
             ("AI 생성·편집 선언", provenance.get("ai", "판별 불가")),
             ("출처 검증", provenance.get("validation", "검사하지 않음")),
             ("파일 형식", format_text),
@@ -6322,9 +6330,12 @@ class CrowEyesImageViewer(tb.Window):
 
 
 from croweyes_tools_ui import FeaturesMixin
+from croweyes_workspace import WorkspaceMixin, WorkspaceToolbar
+
+CrowEyesToolbar = WorkspaceToolbar
 
 
-class CrowEyes20(FeaturesMixin, CrowEyesImageViewer):
+class CrowEyes20(WorkspaceMixin, FeaturesMixin, CrowEyesImageViewer):
     pass
 
 
@@ -6332,6 +6343,9 @@ CrowEyesImageViewer = CrowEyes20
 
 
 def main() -> int:
+    if len(sys.argv)==3 and sys.argv[1]=='--workspace-self-test':
+        from croweyes_release_checks import run_workspace
+        return run_workspace(CrowEyes20,sys.argv[2])
     if len(sys.argv) >= 3 and sys.argv[1] == '--v20-self-test':
         from croweyes_release_checks import run
         return run(sys.argv[2],sys.argv[3] if len(sys.argv)>3 else None)

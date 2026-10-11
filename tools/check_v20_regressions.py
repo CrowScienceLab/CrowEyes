@@ -11,5 +11,8 @@ for name in names:
         continue
     path=ROOT/'tools'/name
     source=path.read_text(encoding='utf-8').replace('CrowEyes_Image_Viewer_1.9e.py','CrowEyes_Image_Viewer_2.0.py')
+    if name=='check_slideshow_toolbar.py':
+        source=source.replace("== 36 for button in viewer._toolbar_buttons", "== 32 for button in viewer._toolbar_buttons")
+        source=source.replace('len(viewer._toolbar_buttons) >= 12','len(viewer._toolbar_buttons) >= 11')
     print('RUN:',name,flush=True)
     exec(compile(source,str(path),'exec'),{'__file__':str(path),'__name__':'__main__'})

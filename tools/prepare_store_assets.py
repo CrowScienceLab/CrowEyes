@@ -18,7 +18,7 @@ def main() -> None:
     args = parser.parse_args()
     args.output.mkdir(parents=True, exist_ok=True)
 
-    source_path = Path(__file__).resolve().parents[1] / "assets" / "icons" / "croweyes-1.9.png"
+    source_path = Path(__file__).resolve().parents[1] / "assets" / "icons" / "croweyes-2.0.png"
     with Image.open(source_path) as opened:
         source = opened.convert("RGBA")
 

@@ -6,6 +6,49 @@ from pathlib import Path
 from PIL import Image
 
 
+def run_workspace(viewer_type,report_path):
+    """Exercise the frozen Tk workspace without OS input or user settings."""
+    import time
+    from unittest.mock import patch
+    report=Path(report_path);report.parent.mkdir(parents=True,exist_ok=True)
+    module=sys.modules[viewer_type.__module__]
+    folder=report.parent/'workspace-images';folder.mkdir(exist_ok=True)
+    for i in range(6):Image.new('RGB',(640,400),(40+i*20,90,140)).save(folder/f'photo-{i}.png')
+    viewer=None;errors=[]
+    results={}
+    try:
+        with patch.object(module,'load_settings',lambda:{**module.DEFAULT_SETTINGS,'auto_check_updates':False,'association_extensions':[],'window_geometry':'1100x800'}),patch.object(module,'save_settings',lambda values:None),patch.object(viewer_type,'_auto_register_file_associations',lambda self:None):
+            viewer=viewer_type(str(folder/'photo-0.png'))
+            viewer.report_callback_exception=lambda *args:errors.append(str(args))
+            def pump(ms):
+                end=time.monotonic()+ms/1000
+                while time.monotonic()<end:viewer.update();time.sleep(.01)
+            pump(1200)
+            assert viewer.display_image is not None
+            viewer.rotate(90);pump(100);viewer.zoom_by(1.3)
+            state=viewer._state();zoom=viewer.zoom
+            viewer.set_workspace('editor');pump(600)
+            assert str(viewer._editor_panel) in viewer.paned.panes() and viewer._film_photos
+            assert viewer._state()==state and viewer.zoom==zoom
+            viewer.set_workspace('viewer');pump(200)
+            assert len(viewer.paned.panes())==3 and viewer._state()==state
+            assert list(viewer._workspace_menus)==['파일','보기','편집','정리','도구','설정']
+            viewer.geometry('800x600');viewer.set_workspace('editor');pump(400)
+            assert viewer.toolbar.winfo_reqheight()<250
+            assert viewer._filmstrip.winfo_rooty()+viewer._filmstrip.winfo_height()<=viewer.winfo_rooty()+viewer.winfo_height()
+            assert all(child.winfo_rootx()+child.winfo_width()<=viewer.winfo_rootx()+viewer.winfo_width() for child in viewer._filmstrip.winfo_children())
+            assert not [n for n in ('c2pa','numpy','onnxruntime','tokenizers') if n in sys.modules]
+            viewer._on_close();viewer=None
+            assert not errors,errors
+        results=dict(status='PASS',checks=['frozen viewer/editor','state retention','filmstrip','six menus','800x600 bounds','no heavy imports'],callback_errors=errors)
+    except Exception as exc:
+        import traceback
+        results=dict(status='FAIL',error=str(exc),traceback=traceback.format_exc(),callback_errors=errors)
+        if viewer:viewer.destroy()
+    report.write_text(json.dumps(results,ensure_ascii=False,indent=2),encoding='utf-8')
+    return 0 if results['status']=='PASS' else 1
+
+
 def run(report_path, modules=None):
     report=Path(report_path)
     report.parent.mkdir(parents=True,exist_ok=True)

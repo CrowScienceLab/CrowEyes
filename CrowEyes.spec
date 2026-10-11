@@ -17,8 +17,8 @@ msgcat = python_root / 'Library' / 'lib' / 'tcl8' / '8.5' / 'msgcat-1.6.1.tm'
 datas = [(str(msgcat), 'tcl8\\8.5')] if msgcat.is_file() else []
 datas += collect_data_files('ttkbootstrap')
 datas += [
-    (str(Path('assets/icons/croweyes-eye-logo.png').resolve()), 'assets/icons'),
-    (str(Path('assets/icons/croweyes-1.9.png').resolve()), 'assets/icons'),
+    (str(Path('assets/icons/croweyes-2.0.png').resolve()), 'assets/icons'),
+    (str(Path('assets/icons/croweyes-2.0.ico').resolve()), 'assets/icons'),
     (str(Path('assets/icons/croweyes.ico').resolve()), 'assets/icons'),
     (str(Path('assets/safety/content_blocked_crow.webp').resolve()), 'assets/safety'),
     (str(Path('version.json').resolve()), '.'),
@@ -73,7 +73,7 @@ exe = EXE(
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
-    icon=['assets\\icons\\croweyes.ico'],
+    icon=['assets\\icons\\croweyes-2.0.ico'],
     version=pe_version,
 )
 coll = COLLECT(
