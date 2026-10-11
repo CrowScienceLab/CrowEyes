@@ -142,14 +142,18 @@ class DockMixin:
     def _window(self,title,size=None):
         if any(word in title for word in ('출처','C2PA','글자','OCR','색인','촬영 정보','검색')):
             from croweyes_dialogs import FittedDialog
-            win=FittedDialog(self,title,540)
+            win=FittedDialog(self,title,620 if any(word in title for word in ("출처","C2PA")) else 540)
             return win,win.body
         return super()._window(title,size)
 
     def _text(self,title,text):
         if any(word in title for word in ('출처','C2PA','글자','OCR','색인','검색','촬영 정보')):
             win,frame=self._window(title)
-            if '색인' in title or '출처' in title or 'C2PA' in title:
+            if '출처' in title or 'C2PA' in title:
+                # A provenance summary always occupies one page.
+                for line in str(text).splitlines():
+                    if line.strip():ttk.Label(frame,text=line,wraplength=560,justify='left').pack(fill='x',pady=3)
+            elif '색인' in title:
                 # Results have a content-sized card; no copy button or scrollbar.
                 import textwrap
                 lines=[]
@@ -191,7 +195,8 @@ class DockMixin:
         ttk.Radiobutton(options,text='ON · 보호 켜기',variable=enabled,value=True).pack(side='left',padx=12)
         ttk.Radiobutton(options,text='OFF · 보호 끄기',variable=enabled,value=False).pack(side='left',padx=12)
         def apply():
-            self._set_content_filter('explicit' if enabled.get() else 'off')
+            mode='explicit' if enabled.get() else 'off'
             win.destroy()
+            self._set_content_filter(mode)
         ttk.Button(frame,text='적용',style='Accent.TButton',command=apply).pack(anchor='e',pady=6)
         return win

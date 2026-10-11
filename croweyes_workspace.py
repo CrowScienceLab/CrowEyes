@@ -103,7 +103,7 @@ class WorkspaceToolbar(ttk.Frame):
         if cols==self._columns:return
         self._columns=cols
         rows=(14+cols-1)//cols
-        self.configure(height=max(48,rows*(max(b.winfo_reqheight() for b in buttons)+6))+8)
+        self.configure(height=max(48,rows*(max(b.winfo_reqheight() for b in buttons)+6),self.viewer._brand_label.winfo_reqheight(),self.viewer._brand_logo_label.winfo_reqheight(),self.mode_switch.winfo_reqheight())+8)
         for i in range(16):self.buttons.columnconfigure(i,minsize=tile if i<cols else 0)
         for i,b in enumerate(buttons):b.grid(row=i//cols,column=i%cols,padx=2,pady=3,sticky='ew')
 
@@ -156,6 +156,7 @@ class WorkspaceMixin(DockMixin,InlineEditorMixin):
         self._brand_label.tk.call(self._brand_label._w,'configure','-style','Brand.TLabel')
         self._brand_logo_label.tk.call(self._brand_logo_label._w,'configure','-style','Logo.TLabel')
         if hasattr(self.toolbar,'mode_switch'):self.toolbar.mode_switch.redraw()
+        if hasattr(self,'_pixel_swatch'):self._pixel_swatch.tk.call(self._pixel_swatch._w,'configure','-background',self._theme()['panel_alt'])
         if hasattr(self,'_dock_pages'):
             t=self._theme()
             def paint(widget):

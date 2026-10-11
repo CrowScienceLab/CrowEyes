@@ -16,7 +16,7 @@ import queue
 import sqlite3
 import threading
 import time
-from typing import Callable, Iterable, List, Optional, Sequence, Tuple
+from typing import Callable, Iterable, List, Optional, Sequence, Tuple, Union
 
 from PIL import Image, ImageOps, ImageSequence
 
@@ -89,7 +89,7 @@ class SafetyResult:
 @dataclass(frozen=True)
 class SafetyTaskResult:
     kind: str
-    generation: int
+    generation: Union[int, Tuple[int, int]]
     path: Optional[Path]
     result: SafetyResult
 
@@ -395,7 +395,7 @@ class SafetyWorker:
         self,
         path: Path,
         priority: int,
-        generation: int,
+        generation: Union[int, Tuple[int, int]],
         vector_loader: Optional[Callable[[Path, int], Image.Image]] = None,
         kind: str = "current",
     ) -> None:

@@ -115,9 +115,43 @@ def run_workspace(viewer_type,report_path):
             pump(100);assert abs(viewer._grid_canvas.canvasy(0))<2
             assert not hasattr(viewer,'semantic_dialog') and not hasattr(viewer,'catalog_dialog')
             assert not [n for n in ('c2pa','numpy','onnxruntime','tokenizers') if n in sys.modules]
+            # Exercise the real bundled filter, including the previously failing ON placement.
+            viewer.hide_info_panel();viewer.set_workspace('viewer');pump(500)
+            before=dict(viewer._thumb_photos)
+            assert all(str(path) in before for path in viewer.folder_files)
+            from tkinter.font import Font
+            font=Font(root=viewer,font=module.ttk.Style(viewer).lookup('Brand.TLabel','font'))
+            assert font.actual('size')==21 and font.actual('weight')=='normal'
+            assert viewer._icons['eye'].height()==font.metrics('linespace')
+            assert [b._croweyes_action for b in viewer._navigation_buttons]==['previous','next','up','refresh']
+            win=viewer._text('AI 생성 판단 · C2PA','파일: photo-0.png\\nAI 기록: 판별 불가\\n출처 기록: 없음\\n검증: 확인 불가\\n출처 정보 없음은 AI가 아니라는 뜻이 아닙니다.');pump(100)
+            assert not any(w.__class__.__name__=='Button' and w.cget('text') in ('이전','다음') for w in win.body.winfo_children())
+            assert win.winfo_reqheight()<=win.winfo_height();win.destroy()
+            def children(w):
+                out=[]
+                for c in w.winfo_children():out.append(c);out.extend(children(c))
+                return out
+            win=viewer.adult_filter_dialog();pump(100)
+            widgets=children(win)
+            next(w for w in widgets if w.__class__.__name__=='Radiobutton' and w.cget('text').startswith('ON')).invoke()
+            next(w for w in widgets if w.__class__.__name__=='Button' and w.cget('text')=='적용').invoke()
+            assert not win.winfo_exists() and viewer._content_filter_mode=='explicit'
+            deadline=time.monotonic()+12
+            while viewer.display_image is None and time.monotonic()<deadline:pump(100)
+            assert viewer._content_safety_status==module.SAFE and viewer.display_image is not None
+            win=viewer.adult_filter_dialog();pump(100)
+            widgets=children(win)
+            next(w for w in widgets if w.__class__.__name__=='Radiobutton' and w.cget('text').startswith('OFF')).invoke()
+            next(w for w in widgets if w.__class__.__name__=='Button' and w.cget('text')=='적용').invoke()
+            assert not win.winfo_exists() and viewer._content_filter_mode=='off'
+            assert all(str(viewer._icon_cells[i].cget('image'))==str(before[str(path)]) for i,path in enumerate(viewer.folder_files))
+            pump(200)
+            viewer._on_motion(SimpleNamespace(x=viewer.canvas.winfo_width()/2,y=viewer.canvas.winfo_height()/2));pump(100)
+            assert viewer._pixel_swatch.winfo_ismapped()
+            assert viewer._pixel_swatch.itemcget('color','fill') in viewer.status.cget('text')
             viewer._on_close();viewer=None
             assert not errors,errors
-        results=dict(status='PASS',checks=['frozen viewer/editor','state retention','shared file list','inline highlight and undo/redo','six menus','800x600 bounds','breadcrumb links and four action icons','Ctrl/Shift grid events','no canvas resize on workspace switch','four-column default','fitted settings without scrollbars','small internal OCR/index/filter cards','native OCR cursor in frozen build','plain breadcrumb','drag selection and strong border','print icon','single status pixel display','grid scroll boundary','no heavy imports'],callback_errors=errors)
+        results=dict(status='PASS',checks=['frozen viewer/editor','state retention','shared file list','inline highlight and undo/redo','six menus','800x600 bounds','breadcrumb links and four action icons','Ctrl/Shift grid events','no canvas resize on workspace switch','four-column default','fitted settings without scrollbars','small internal OCR/index/filter cards','native OCR cursor in frozen build','plain breadcrumb','drag selection and strong border','print icon','single status pixel display','grid scroll boundary','no heavy startup imports','real bundled filter ON/OFF closes dialog','immediate original thumbnails on OFF','one-page AI result','pixel swatch','four navigation icons','normal brand/font-matched logo'],callback_errors=errors)
     except Exception as exc:
         import traceback
         results=dict(status='FAIL',error=str(exc),traceback=traceback.format_exc(),callback_errors=errors)

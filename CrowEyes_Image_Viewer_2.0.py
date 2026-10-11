@@ -1319,7 +1319,8 @@ class CrowEyesIconSet:
         for name in toolbar_icons:
             self.images[name] = self._render(name, 24)
             self.images["toolbar_" + name] = self._render(name, 32, toolbar=True)
-        self.images["eye"] = self._load_brand_eye()
+        from tkinter.font import Font
+        self.images["eye"] = self._load_brand_eye(Font(root=root,family="Segoe UI",size=21).metrics("linespace"))
         self.images["eye_large"] = self._load_brand_eye(88)
         self.images["folder_large"] = self._render("folder", 52)
         self.images["computer_large"] = self._render("computer", 52)
@@ -1728,6 +1729,14 @@ class NavigationBar(ttk.Frame):
     def __init__(self, master: tk.Widget, viewer: "CrowEyesImageViewer") -> None:
         super().__init__(master, style="Chrome.TFrame", padding=(12, 7))
         self.columnconfigure(1, weight=1)
+        nav=ttk.Frame(self,style='Chrome.TFrame')
+        nav.grid(row=0,column=0,sticky='w',padx=(0,6))
+        viewer._navigation_buttons=[]
+        for name,tip,command in [('previous','이전 폴더',viewer.go_folder_back),('next','다음 폴더',viewer.go_folder_forward),('up','상위 폴더',viewer.go_parent_folder),('refresh','새로고침',viewer.refresh_folder)]:
+            button=_tool_button(nav,'',tip,command,0,viewer._icons[name])
+            button._croweyes_action=name
+            button.pack(side='left',padx=1)
+            viewer._navigation_buttons.append(button)
         viewer._breadcrumb_frame = ttk.Frame(self, style="Chrome.TFrame", padding=(0, 0))
         viewer._breadcrumb_frame.grid(row=0, column=1, sticky="ew", padx=(0, 10))
 
@@ -1989,6 +1998,20 @@ class InfoPanel(ttk.Frame):
         scroll.configure(command=viewer.info_text.yview)
 
 
+class ColorStatusLabel(ttk.Label):
+    def configure(self,cnf=None,**kw):
+        text=kw.get('text',cnf.get('text') if isinstance(cnf,dict) else None)
+        result=super().configure(cnf,**kw)
+        if text is not None and hasattr(self,'swatch'):
+            match=re.search(r'^Pixel.*?(#[0-9A-Fa-f]{6})',str(text))
+            if match:
+                self.swatch.itemconfigure('color',fill=match.group(1))
+                self.swatch.pack(side=tk.LEFT,padx=(6,0))
+            else:self.swatch.pack_forget()
+        return result
+    config=configure
+
+
 class ContextControlBar(ttk.Frame):
     """Image-specific adjustments kept out of the global toolbar."""
 
@@ -1999,11 +2022,20 @@ class ContextControlBar(ttk.Frame):
         self.columnconfigure(1, weight=0)
         self.columnconfigure(2, weight=1)
         self.columnconfigure(3, weight=0)
-        viewer.status = ttk.Label(
-            self, text="Pixel (—, —)  #------", style="Status.TLabel",
-            anchor="w", width=27,
+        from tkinter.font import Font
+        status_font=Font(root=viewer,family='Segoe UI',size=9)
+        status_wrap=ttk.Frame(self,style='BottomBar.TFrame',width=status_font.measure('Pixel (99999, 99999)  #FFFFFF')+34,height=status_font.metrics('linespace')+6)
+        status_wrap.grid(row=0,column=0,sticky='w')
+        status_wrap.pack_propagate(False)
+        viewer.status = ColorStatusLabel(
+            status_wrap, text="Pixel (—, —)  #------", style="Status.TLabel",
+            anchor="w", width=0,
         )
-        viewer.status.grid(row=0, column=0, sticky="ew")
+        viewer.status.pack(side=tk.LEFT)
+        viewer._pixel_swatch=tk.Canvas(status_wrap,width=18,height=18,highlightthickness=0,bd=0)
+        viewer._pixel_swatch.create_rectangle(1,1,17,17,fill='',outline='#92A1AF',width=1,tags='color')
+        viewer.status.swatch=viewer._pixel_swatch
+        ToolTip(viewer._pixel_swatch,'마우스 포인터 위치의 실제 픽셀 색상')
 
         viewer._zoom_label = ttk.Label(
             self, textvariable=viewer._zoom_text_var, style="BottomBar.TLabel",
@@ -2335,7 +2367,7 @@ class CrowEyesImageViewer(tb.Window):
         self._thumb_loaded: Set[str] = set()
         self._thumb_queue: List[int] = []
         self._thumb_job: Optional[str] = None
-        self._thumb_decode_results: Dict[Tuple[int, int], tuple] = {}
+        self._thumb_decode_results: Dict[Tuple[Tuple[int, int], int], tuple] = {}
         self._thumb_decode_active = False
         self._placeholder_photo: Optional[ImageTk.PhotoImage] = None
 
@@ -2575,6 +2607,7 @@ class CrowEyesImageViewer(tb.Window):
         save_settings(self.settings)
         self._cancel_thumb_jobs()
         self._thumb_photos.clear()
+        self._plain_thumb_photos = {}
         self._thumb_loaded.clear()
         self._rebuild_file_list_widget()
         self._populate_list_names_only()
@@ -3068,6 +3101,7 @@ class CrowEyesImageViewer(tb.Window):
                     lbl.image = folder_image  # type: ignore[attr-defined]
                     lbl.bind("<Button-1>", lambda e, path=p: self._on_folder_icon_click(e, path))
                     self._folder_cells[key] = lbl
+                    ToolTip(lbl,str(p))
                 self._bind_grid_wheel(lbl)
                 self._icon_grid_order.append(lbl)
             self._layout_icon_grid()
@@ -3103,9 +3137,14 @@ class CrowEyesImageViewer(tb.Window):
             self._highlight_icon_selection()
         return self.show_playlist_context_menu(event)
 
-    @staticmethod
-    def _short_folder_name(name: str, limit: int = 10) -> str:
-        return name if len(name) <= limit else f"{name[:limit - 1]}…"
+    def _short_folder_name(self, name: str, limit: int = 10) -> str:
+        from tkinter.font import Font
+        font=Font(root=self,family='Segoe UI',size=9)
+        available=self._icon_cell_size()-8
+        if font.measure(name)<=available:return name
+        label=name
+        while label and font.measure(label+'…')>available:label=label[:-1]
+        return label+'…'
 
     @staticmethod
     def _playlist_folder_label(kind: str, path: Path) -> str:
@@ -3275,6 +3314,9 @@ class CrowEyesImageViewer(tb.Window):
             return
         self._thumb_job = self.after(1, self._thumb_worker_step)
 
+    def _thumbnail_generation(self) -> Tuple[int, int]:
+        return (self._playlist_gen,getattr(self,'_content_filter_epoch',0))
+
     def _thumb_worker_step(self) -> None:
         self._thumb_job = None
         if self.list_mode == "names" or self._thumb_decode_active:
@@ -3293,7 +3335,7 @@ class CrowEyesImageViewer(tb.Window):
                     if key not in self._safety_thumb_pending and self._safety_worker is not None:
                         self._safety_thumb_pending.add(key)
                         self._safety_worker.submit(
-                            path, 20, self._playlist_gen,
+                            path, 20, self._thumbnail_generation(),
                             vector_loader=self._safety_vector_loader, kind="thumbnail",
                         )
                     continue
@@ -3303,28 +3345,33 @@ class CrowEyesImageViewer(tb.Window):
                     self._thumb_photos[key] = photo
                     self._apply_thumb_to_row(idx, photo)
                     continue
+                if known_status != SAFE:
+                    self._thumb_loaded.add(key)
+                    continue
             size = self._icon_cell_size() if self.list_mode == "icons" else 22
-            generation = self._playlist_gen
+            generation = self._thumbnail_generation()
             self._thumb_decode_active = True
 
             def worker() -> None:
                 image = self._make_thumb_pil(path, size)
-                self._thumb_decode_results[(generation, idx)] = (path, image)
+                if generation==self._thumbnail_generation():
+                    self._thumb_decode_results[(generation, idx)] = (path, image)
 
             threading.Thread(target=worker, name="CrowEyesThumbnail", daemon=True).start()
             self.after(20, self._poll_thumb_decode, generation, idx)
             return
 
-    def _poll_thumb_decode(self, generation: int, idx: int) -> None:
+    def _poll_thumb_decode(self, generation: Tuple[int, int], idx: int) -> None:
         result = self._thumb_decode_results.pop((generation, idx), None)
         if result is None:
-            if generation == self._playlist_gen:
+            if generation == self._thumbnail_generation():
                 self.after(20, self._poll_thumb_decode, generation, idx)
             else:
                 self._thumb_decode_active = False
+                self._kick_thumb_worker()
             return
         self._thumb_decode_active = False
-        if generation == self._playlist_gen and 0 <= idx < len(self.folder_files):
+        if generation == self._thumbnail_generation() and 0 <= idx < len(self.folder_files):
             path, image = result
             if path == self.folder_files[idx]:
                 key = str(path)
@@ -3706,8 +3753,8 @@ class CrowEyesImageViewer(tb.Window):
         if self.current_folder is None:
             return
         parent = self.current_folder.parent
-        if parent != self.current_folder:
-            self.navigate_to_folder(parent)
+        if parent != self.current_folder:self.navigate_to_folder(parent)
+        else:self.navigate_to_computer()
 
     def refresh_folder(self) -> None:
         if self.current_folder is not None:
@@ -3717,7 +3764,9 @@ class CrowEyesImageViewer(tb.Window):
 
     def _update_navigation_state(self) -> None:
         for button in self._navigation_buttons:
-            button.configure(state=tk.NORMAL)
+            action=getattr(button,'_croweyes_action','')
+            enabled={'previous':self._folder_history_index>0,'next':self._folder_history_index+1<len(self._folder_history),'up':self.current_folder is not None}.get(action,True)
+            button.configure(state=tk.NORMAL if enabled else tk.DISABLED)
 
     def _update_breadcrumb(self) -> None:
         frame=getattr(self,'_breadcrumb_frame',None)
@@ -3751,9 +3800,9 @@ class CrowEyesImageViewer(tb.Window):
         self._breadcrumb_overflow.bind('<Button-1>',lambda e:self._breadcrumb_menu.tk_popup(e.x_root,e.y_root))
         def link(text,target):
             command=self.navigate_to_computer if target is None else lambda p=target:self._navigate_playlist_folder(p)
-            button=tk.Label(frame if target is None else links,text=text if target is not None else '',image=self._icons['computer'] if target is None else '',
-                            bg=self._theme()['toolbar'],fg=self._theme()['fg'],bd=0,padx=4,pady=3,cursor='hand2',font=('Segoe UI',10))
-            button.tk.call(button._w,'configure','-background',self._theme()['toolbar'],'-foreground',self._theme()['fg'])
+            button=tk.Label(frame if target is None else links,text=text,image=self._icons['computer'] if target is None else '',
+                            bg=self._theme()['toolbar'],fg=self._theme()['fg'],bd=0,padx=4,pady=3,cursor='hand2',font=('Segoe UI',10),compound='left')
+            button.tk.call(button._w,'configure','-background',self._theme()['toolbar'],'-foreground','#79BEFF' if self.settings.get('ui_theme')=='croweyes_dark' else '#1263AD')
             if target is None:button.pack(side='left',before=self._breadcrumb_canvas)
             else:button.pack(side='left')
             button._croweyes_target=target
@@ -3765,7 +3814,7 @@ class CrowEyesImageViewer(tb.Window):
             button.bind('<MouseWheel>',lambda e:(self._breadcrumb_canvas.xview_scroll(-2 if e.delta>0 else 2,'units'),'break')[-1])
             self._breadcrumb_targets.append(button)
             ToolTip(button,'내 컴퓨터' if target is None else str(target))
-        link('컴퓨터',None)
+        link('내 컴퓨터',None)
         if self.current_folder:
             for part in reversed((self.current_folder,*self.current_folder.parents)):
                 ttk.Label(links,text='›',style='Chrome.TLabel').pack(side='left',padx=2)
@@ -3794,6 +3843,7 @@ class CrowEyesImageViewer(tb.Window):
         self._image_prefetch_queue.clear()
         self._image_prefetch_pending.clear()
         self._thumb_photos.clear()
+        self._plain_thumb_photos = {}
         self._thumb_loaded.clear()
 
         self.current_folder = path.parent
@@ -4555,7 +4605,7 @@ class CrowEyesImageViewer(tb.Window):
         style.configure("Viewer.TFrame", background=t["canvas_bg"], bordercolor=t["border"],
                         borderwidth=1, relief="solid")
         style.configure("TLabel", background=t["bg"], foreground=t["fg"], font=t["font"])
-        style.configure("Brand.TLabel", background=t["toolbar"], foreground=t["fg"], font=("Segoe UI", 22, "bold"))
+        style.configure("Brand.TLabel", background=t["toolbar"], foreground=t["fg"], font=("Segoe UI", 21))
         style.configure("Logo.TLabel", background=t["toolbar"], foreground=t["accent"], font=("Segoe UI", 17, "bold"))
         style.configure("Product.TLabel", background=t["toolbar"], foreground=t["muted"], font=("Segoe UI Semibold", 8))
         style.configure("Crumb.TLabel", background=t["toolbar"], foreground=t["muted"], font=("Segoe UI", 8))
@@ -4852,6 +4902,7 @@ class CrowEyesImageViewer(tb.Window):
         save_settings(self.settings)
         self._cancel_thumb_jobs()
         self._thumb_photos.clear()
+        self._plain_thumb_photos = {}
         self._thumb_loaded.clear()
         self._rebuild_icon_chrome()
         self._populate_list_names_only()
@@ -4877,6 +4928,7 @@ class CrowEyesImageViewer(tb.Window):
         self.toolbar.grid(row=0, column=0, sticky="ew")
         self.navigation_bar = NavigationBar(self, self)
         self.navigation_bar.grid(row=1, column=0, sticky="ew")
+        self._update_breadcrumb()
         self.context_bar = ContextControlBar(self, self)
         self.context_bar.grid(row=3, column=0, sticky="ew")
         if not self._context_visible:
@@ -5792,6 +5844,7 @@ class CrowEyesImageViewer(tb.Window):
 
     def _ensure_safety_worker(self) -> None:
         if self._safety_worker is not None:
+            if self._safety_poll_job is None:self._poll_safety_worker()
             return
         cache_root = Path(os.environ.get("LOCALAPPDATA", str(Path.home()))) / "CrowEyes"
         self._safety_manager = SafetyManager(
@@ -5808,34 +5861,48 @@ class CrowEyesImageViewer(tb.Window):
         indicator = getattr(self, "_safety_indicator", None)
         if indicator is not None:
             if enabled:
-                indicator.pack(side=tk.LEFT, padx=(0, 10), before=indicator.master.winfo_children()[1])
+                indicator.pack(side=tk.LEFT, padx=(0, 10))
             else:
                 indicator.pack_forget()
 
     def _set_content_filter(self, mode: str) -> None:
-        if mode not in {MODE_OFF, MODE_EXPLICIT}:
+        if mode not in {MODE_OFF, MODE_EXPLICIT} or mode == self._content_filter_mode:
             return
-        changed = mode != self._content_filter_mode
+        # A filter change invalidates checks without cancelling an active folder scan.
+        self._content_filter_epoch=getattr(self,'_content_filter_epoch',0)+1
+        self._cancel_thumb_jobs()
+        plain=dict(getattr(self,'_plain_thumb_photos',{}))
+        if self._content_filter_mode==MODE_OFF:
+            plain.update(self._thumb_photos)
+        else:
+            plain.update({key:photo for key,photo in self._thumb_photos.items() if self._safety_known.get(key)==SAFE})
+        size=self._icon_cell_size() if self.list_mode=='icons' else 22
+        paths={str(path) for path in self.folder_files}
+        plain={key:photo for key,photo in plain.items() if key in paths and photo.width()==size}
+        self._plain_thumb_photos=plain
         self._content_filter_mode = mode
         self.settings["content_filter"] = mode
         save_settings(self.settings)
         self._update_safety_indicator()
         self._content_safety_status = UNKNOWN
         self._content_safety_detail = ""
-        self._cancel_thumb_jobs()
-        self._thumb_photos.clear()
-        self._thumb_loaded.clear()
         self._safety_known.clear()
-        if mode == MODE_EXPLICIT:
+        self._safety_thumb_pending.clear()
+        self._thumb_photos={} if mode==MODE_EXPLICIT else dict(plain)
+        self._thumb_loaded=set(self._thumb_photos)
+        # Keep widgets, selection and scroll position; restore decoded photos immediately.
+        for index,path in enumerate(self.folder_files):
+            self._apply_thumb_to_row(index,self._thumb_photos.get(str(path),self._placeholder_photo))
+        if mode==MODE_EXPLICIT:
             self._ensure_safety_worker()
         elif self._safety_worker is not None:
             self._safety_worker.clear_pending()
-        if changed:
-            self._populate_list_names_only()
-            if 0 <= self.index < len(self.folder_files):
-                self._load_current()
-            else:
-                self.redraw()
+            if self._safety_poll_job is not None:
+                self.after_cancel(self._safety_poll_job)
+                self._safety_poll_job=None
+        self._queue_thumbs_priority()
+        if 0 <= self.index < len(self.folder_files):self._load_current()
+        else:self.redraw()
 
     def _clear_safety_cache(self, parent: Optional[tk.Misc] = None) -> None:
         try:
@@ -5854,7 +5921,10 @@ class CrowEyesImageViewer(tb.Window):
         if worker is None:
             return
         for task in worker.poll():
-            if task.path is not None and task.result.status in {SAFE, BLOCKED}:
+            if self._content_filter_mode!=MODE_EXPLICIT:continue
+            if task.kind=='current' and task.generation!=self._image_load_gen:continue
+            if task.kind in {'thumbnail','prefetch'} and task.generation!=self._thumbnail_generation():continue
+            if task.path is not None and task.result.status in {SAFE, BLOCKED, ERROR}:
                 self._safety_known[str(task.path)] = task.result.status
             if task.kind == "preload":
                 if task.result.status == ERROR:
@@ -5890,16 +5960,24 @@ class CrowEyesImageViewer(tb.Window):
                         self._startup_activation_pending = False
                         self.after_idle(self._activate_viewer_window)
                 continue
-            if task.kind in {"thumbnail", "prefetch"} and task.generation == self._playlist_gen:
+            if task.kind in {"thumbnail", "prefetch"} and task.generation == self._thumbnail_generation():
                 if task.path is not None:
                     self._safety_thumb_pending.discard(str(task.path))
-                if task.kind == "thumbnail":
-                    self._cancel_thumb_jobs()
-                    self._populate_list_names_only()
+                if task.kind == "thumbnail" and task.path is not None:
+                    key=str(task.path)
+                    if task.result.status==SAFE:
+                        photo=getattr(self,'_plain_thumb_photos',{}).get(key)
+                        size=self._icon_cell_size() if self.list_mode=='icons' else 22
+                        if photo is not None and photo.width()==size:
+                            self._thumb_photos[key]=photo
+                            self._thumb_loaded.add(key)
+                            try:self._apply_thumb_to_row(self.folder_files.index(task.path),photo)
+                            except ValueError:pass
+                    if task.result.status==ERROR:self._thumb_loaded.add(key)
                     self._queue_thumbs_visible()
                 elif task.result.status == SAFE:
                     self._queue_image_prefetch()
-        if self._safety_worker is worker:
+        if self._safety_worker is worker and self._content_filter_mode==MODE_EXPLICIT:
             self._safety_poll_job = self.after(40, self._poll_safety_worker)
 
     def _queue_safety_neighbors(self) -> None:
@@ -5912,7 +5990,7 @@ class CrowEyesImageViewer(tb.Window):
                 if str(path) in self._safety_known:
                     continue
                 self._safety_worker.submit(
-                    path, priority, self._playlist_gen,
+                    path, priority, self._thumbnail_generation(),
                     vector_loader=self._safety_vector_loader, kind="prefetch",
                 )
 
@@ -6132,6 +6210,7 @@ class CrowEyesImageViewer(tb.Window):
         self._image_prefetch_queue.clear()
         self._image_prefetch_pending.clear()
         self._thumb_photos.clear()
+        self._plain_thumb_photos = {}
         self._thumb_loaded.clear()
         self._safety_known.clear()
         self._file_stat_cache.clear()

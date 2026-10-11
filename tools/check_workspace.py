@@ -23,7 +23,7 @@ pump(1500)
 assert viewer.display_image is not None
 assert list(viewer._workspace_menus)==['파일','보기','편집','정리','도구','설정']
 assert str(viewer.cget('menu'))==str(viewer.toolbar.menu_row)
-assert not viewer._navigation_buttons
+assert [b._croweyes_action for b in viewer._navigation_buttons]==['previous','next','up','refresh']
 viewer.rotate(90);pump();viewer.zoom_by(1.5)
 state=viewer._state();zoom=viewer.zoom
 for _ in range(3):
