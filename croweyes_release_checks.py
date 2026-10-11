@@ -25,6 +25,9 @@ def run_workspace(viewer_type,report_path):
                 while time.monotonic()<end:viewer.update();time.sleep(.01)
             pump(1200)
             assert viewer.display_image is not None
+            assert viewer.list_mode=='icons'
+            assert {int(w.grid_info()['column']) for w in viewer._icon_grid_order}=={0,1,2,3}
+            assert not hasattr(viewer,'_info_tab') and not hasattr(viewer,'_pixel_label')
             viewer.rotate(90);pump(100);viewer.zoom_by(1.3)
             state=viewer._state();zoom=viewer.zoom
             viewer.set_workspace('editor');pump(600)
@@ -35,9 +38,16 @@ def run_workspace(viewer_type,report_path):
             assert list(viewer._workspace_menus)==['파일','보기','편집','정리','도구','설정']
             viewer.geometry('800x600');viewer.set_workspace('editor');pump(400)
             assert viewer.toolbar.winfo_reqheight()<250
-            assert not viewer._info_visible and viewer._info_tab.winfo_ismapped()
+            assert not viewer._info_visible and viewer._navigation_tasks.winfo_ismapped()
             viewer.toggle_info_panel();pump(100);assert len(viewer.paned.panes())==3
             viewer.toggle_info_panel();pump(100);assert len(viewer.paned.panes())==2
+            for action in (viewer.show_preferences,viewer.performance_dialog,viewer.extensions_dialog):
+                action();pump(150)
+                fitted=[w for w in viewer.winfo_children() if w.__class__.__name__=='FittedDialog']
+                assert len(fitted)==1
+                window=fitted[0]
+                assert window.winfo_rooty()+window.winfo_height()<=viewer.winfo_rooty()+viewer.winfo_height()
+                window.destroy()
             assert all(not b.cget('text') for b in viewer._toolbar_buttons)
             assert [b._croweyes_action for b in viewer._toolbar_buttons][-5:]==['annotation','highlight','mosaic','compare','save']
             assert all(b.cget('style')=='Icon.Tool.TButton' for b in viewer._toolbar_buttons)
@@ -60,7 +70,7 @@ def run_workspace(viewer_type,report_path):
                 assert len(viewer.paned.panes())==3 and viewer._dock_pages[page].winfo_ismapped()
             viewer._activate_dock('정보');pump(100)
             viewer._on_motion(SimpleNamespace(x=viewer.canvas.winfo_width()/2,y=viewer.canvas.winfo_height()/2))
-            assert 'RGB' in viewer._pixel_label.cget('text')
+            assert 'Pixel' in viewer.status.cget('text') and not hasattr(viewer,'_pixel_label')
             viewer.set_list_mode('icons');pump(200)
             for _ in range(30):viewer._on_grid_wheel(SimpleNamespace(delta=120))
             pump(100);assert abs(viewer._grid_canvas.canvasy(0))<2
@@ -68,7 +78,7 @@ def run_workspace(viewer_type,report_path):
             assert not [n for n in ('c2pa','numpy','onnxruntime','tokenizers') if n in sys.modules]
             viewer._on_close();viewer=None
             assert not errors,errors
-        results=dict(status='PASS',checks=['frozen viewer/editor','state retention','shared file list','inline highlight and undo/redo','six menus','800x600 bounds','four right dock pages','inline OCR results','pixel RGB','grid scroll boundary','no heavy imports'],callback_errors=errors)
+        results=dict(status='PASS',checks=['frozen viewer/editor','state retention','shared file list','inline highlight and undo/redo','six menus','800x600 bounds','one navigation row and four on-demand pages','four-column default','fitted settings without scrollbars','inline OCR results','single status pixel display','grid scroll boundary','no heavy imports'],callback_errors=errors)
     except Exception as exc:
         import traceback
         results=dict(status='FAIL',error=str(exc),traceback=traceback.format_exc(),callback_errors=errors)

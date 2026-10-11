@@ -176,7 +176,7 @@ DEFAULT_SETTINGS = {
     "wheel_zoom": 1.15,
     "mouse_wheel_action": "navigate",
     "window_geometry": "1120x760",
-    "list_mode": "small",
+    "list_mode": "icons",
     "anim_playing": True,
     "sort_by": "name",  # name | date | size | ext
     "sort_desc": False,
@@ -185,7 +185,7 @@ DEFAULT_SETTINGS = {
     "show_playlist_panel": True,
     "show_context_bar": True,
     "compact_toolbar": False,
-    "design_generation": 10,
+    "design_generation": 11,
     "content_filter": MODE_OFF,
     "auto_check_updates": True,
     "last_update_check": 0,
@@ -398,6 +398,10 @@ def load_settings() -> dict:
             data["pane_ratio_info"] = 0.18
         data["design_generation"] = 10
 
+    if design_generation < 11 or "design_generation" not in loaded_keys:
+        data["list_mode"] = "icons"
+        data["design_generation"] = 11
+
     legacy_theme_map = {
         "pastel": "bright_sky_blue", "pastel_peach": "bright_sky_blue",
         "light": "bright_sky_blue", "dark": "croweyes_dark",
@@ -408,7 +412,7 @@ def load_settings() -> dict:
         ui_theme = legacy_theme_map.get(data.get("theme"), "croweyes_dark")
     data["ui_theme"] = ui_theme if ui_theme in CROWEYES_THEMES else "croweyes_dark"
     if data.get("list_mode") not in LIST_MODES:
-        data["list_mode"] = "small"
+        data["list_mode"] = "icons"
     if data.get("sort_by") not in SORT_KEYS:
         data["sort_by"] = "name"
     if data.get("mouse_wheel_action") not in WHEEL_ACTION_LABELS:
@@ -1711,7 +1715,15 @@ class NavigationBar(ttk.Frame):
         search_wrap = ttk.Frame(self, style="Chrome.TFrame")
         search_wrap.grid(row=0, column=2, sticky="e")
         ttk.Label(search_wrap, image=viewer._icons["search"], style="Chrome.TLabel").pack(side=tk.LEFT, padx=(0, 5))
-        viewer._top_search = ttk.Entry(search_wrap, textvariable=viewer._search_var, width=25, style="Search.TEntry")
+        ttk.Label(search_wrap,text='파일 찾기',style='Chrome.TLabel').pack(side=tk.LEFT,padx=(0,5))
+        viewer._top_search = ttk.Entry(search_wrap, textvariable=viewer._search_var, width=14, style="Search.TEntry")
+        viewer._navigation_tasks=ttk.Frame(self,style='Chrome.TFrame')
+        viewer._navigation_tasks.grid(row=0,column=3,sticky='e',padx=(8,0))
+        viewer._dock_tab_buttons={}
+        for name in ('정보','AI 생성 판단','성인 필터','도구'):
+            button=ttk.Button(viewer._navigation_tasks,text=name,style='Icon.Tool.TButton',command=lambda n=name:viewer.select_dock(n))
+            button.pack(side=tk.LEFT,padx=2)
+            viewer._dock_tab_buttons[name]=button
         viewer._top_search.pack(side=tk.LEFT, ipady=0)
         viewer._top_search.bind("<KeyRelease>", viewer._apply_playlist_filter)
         viewer._top_search.bind("<Escape>", lambda _e: (viewer._search_var.set(""), viewer._apply_playlist_filter()))
@@ -2274,7 +2286,7 @@ class CrowEyesImageViewer(tb.Window):
         self._safety_thumb_pending: Set[str] = set()
         self._safety_known: Dict[str, str] = {}
 
-        self.list_mode = self.settings.get("list_mode", "small")
+        self.list_mode = self.settings.get("list_mode", "icons")
         self.sort_by = self.settings.get("sort_by", "name")
         self.sort_desc = bool(self.settings.get("sort_desc", False))
         self._list_mode_var = tk.StringVar(value=self.list_mode)
@@ -2545,6 +2557,8 @@ class CrowEyesImageViewer(tb.Window):
         self._queue_thumbs_priority()
         if self.index >= 0:
             self._select_list_index(self.index)
+        self._sashes_applied = False
+        self.after(40, self._init_sashes)
 
     def set_sort(self, key: str) -> None:
         if key not in SORT_KEYS:
@@ -2716,7 +2730,7 @@ class CrowEyesImageViewer(tb.Window):
         cell = self._icon_cell_size()
         pad = 4
         cw = max(self._grid_canvas.winfo_width(), cell + pad * 2)
-        cols = max(1, cw // (cell + pad * 2))
+        cols = 4
         for position, lbl in enumerate(self._icon_grid_order):
             r, c = divmod(position, cols)
             lbl.grid(row=r, column=c, padx=pad, pady=pad, sticky="n")
@@ -3631,52 +3645,19 @@ class CrowEyesImageViewer(tb.Window):
             button.configure(state=tk.NORMAL)
 
     def _update_breadcrumb(self) -> None:
-        frame = getattr(self, "_breadcrumb_frame", None)
-        if frame is None:
-            return
-        for child in frame.winfo_children():
-            child.destroy()
-        theme = self._theme()
-
-        def link_label(text: str, target: Optional[Path], image=None) -> tk.Label:
-            label = tk.Label(
-                frame, text=text, image=image, compound=tk.LEFT,
-                bg=theme["toolbar"], fg=theme["fg"], cursor="hand2",
-                bd=0, highlightthickness=0, padx=4, pady=2,
-                font=("Segoe UI", 9),
-            )
-            label.bind(
-                "<Button-1>",
-                (lambda _event: self.navigate_to_computer())
-                if target is None else (lambda _event, path=target: self.navigate_to_folder(path)),
-            )
-            label.bind(
-                "<Enter>",
-                lambda _event, item=label: item.configure(
-                    bg=theme["select"], fg=theme["accent_hi"], font=("Segoe UI", 9, "underline"),
-                ),
-            )
-            label.bind(
-                "<Leave>",
-                lambda _event, item=label: item.configure(
-                    bg=theme["toolbar"], fg=theme["fg"], font=("Segoe UI", 9),
-                ),
-            )
-            return label
-
-        computer = link_label(
-            "내 컴퓨터", None, self._icons["computer"],
-        )
-        computer._croweyes_image = self._icons["computer"]  # type: ignore[attr-defined]
-        computer.pack(side=tk.LEFT)
-        folder = self.current_folder
-        if folder is None:
-            return
-        chain = list(reversed((folder,) + tuple(folder.parents)))
-        for part in chain:
-            ttk.Label(frame, text="›", style="Breadcrumb.TLabel").pack(side=tk.LEFT, padx=4)
-            label = part.name or part.drive or str(part)
-            link_label(label, part).pack(side=tk.LEFT)
+        frame=getattr(self,'_breadcrumb_frame',None)
+        if frame is None:return
+        for child in frame.winfo_children():child.destroy()
+        frame.columnconfigure(1,weight=1)
+        label=ttk.Label(frame,text='폴더 경로',image=self._icons['folder'],compound=tk.LEFT,style='Chrome.TLabel')
+        label.grid(row=0,column=0,padx=(0,6))
+        label.bind('<Button-1>',lambda e:self.open_folder_dialog())
+        ToolTip(label,'폴더 열기 (Ctrl+Shift+O)')
+        value=tk.StringVar(value=str(self.current_folder) if self.current_folder else '폴더를 열어 주세요')
+        path=ttk.Entry(frame,textvariable=value,width=1,state='readonly')
+        path._croweyes_path_var=value
+        path.grid(row=0,column=1,sticky='ew')
+        ToolTip(path,lambda:value.get())
 
 
     def open_path(self, path: Path) -> None:
@@ -4171,12 +4152,6 @@ class CrowEyesImageViewer(tb.Window):
             self.status.configure(
                 text=f"Pixel ({x}, {y})  {color_hex}{anim}"
             )
-            if hasattr(self,'_pixel_label'):
-                self._pixel_label.configure(text=f'위치 ({x}, {y})\nRGB {red}, {green}, {blue}\n{color_hex} · 표시 이미지 기준')
-                self._pixel_swatch.configure(background=color_hex)
-        elif hasattr(self,'_pixel_label'):
-            self._pixel_label.configure(text='이미지 위로 포인터를 이동하세요')
-            self._pixel_swatch.configure(background=self._theme()['panel'])
 
     # ----- save / slideshow ------------------------------------------------
 
@@ -4460,7 +4435,7 @@ class CrowEyesImageViewer(tb.Window):
         style.configure("Viewer.TFrame", background=t["canvas_bg"], bordercolor=t["border"],
                         borderwidth=1, relief="solid")
         style.configure("TLabel", background=t["bg"], foreground=t["fg"], font=t["font"])
-        style.configure("Brand.TLabel", background=t["toolbar"], foreground=t["fg"], font=("Segoe UI Semibold", 21))
+        style.configure("Brand.TLabel", background=t["toolbar"], foreground=t["fg"], font=("Segoe UI", 23, "bold"))
         style.configure("Logo.TLabel", background=t["toolbar"], foreground=t["accent"], font=("Segoe UI", 17, "bold"))
         style.configure("Product.TLabel", background=t["toolbar"], foreground=t["muted"], font=("Segoe UI Semibold", 8))
         style.configure("Crumb.TLabel", background=t["toolbar"], foreground=t["muted"], font=("Segoe UI", 8))
@@ -4678,17 +4653,17 @@ class CrowEyesImageViewer(tb.Window):
             if len(panes) >= 3:
                 playlist_ratio = max(0.18, min(0.32, float(self.settings.get("pane_ratio_playlist", 0.22))))
                 info_ratio = max(0.14, min(0.28, float(self.settings.get("pane_ratio_info", 0.18))))
-                left = max(170, int(pw * playlist_ratio))
-                right = max(150, int(pw * info_ratio))
-                if pw - left - right < 360:
-                    overflow = 360 - (pw - left - right)
-                    left = max(150, left - (overflow + 1) // 2)
-                    right = max(135, right - overflow // 2)
+                left = max(376 if self.list_mode=='icons' else 170, int(pw * playlist_ratio))
+                right = max(260, int(pw * info_ratio))
+                if pw - left - right < 140:
+                    overflow = 140 - (pw - left - right)
+                    left = max(376 if self.list_mode=='icons' else 150, left - (overflow + 1) // 2)
+                    right = max(220, right - overflow // 2)
                 self.paned.sashpos(0, left)
                 self.paned.sashpos(1, pw - right)
             elif len(panes) == 2:
                 first_is_playlist = self._playlist_visible
-                self.paned.sashpos(0, max(170, int(pw * 0.22)) if first_is_playlist else min(pw - 150, int(pw * 0.82)))
+                self.paned.sashpos(0, max(376 if self.list_mode=='icons' else 170, int(pw * 0.22)) if first_is_playlist else min(pw - 150, int(pw * 0.82)))
             self._sashes_applied = True
         except (tk.TclError, IndexError):
             pass
@@ -6321,11 +6296,7 @@ class CrowEyesImageViewer(tb.Window):
         resolution_text = f"{int(round(logical_w))} × {int(round(logical_h))}"
         if self.source_type in {"svg", "eps"}:
             resolution_text += f" · 렌더 {self.pil_image.width} × {self.pil_image.height}"
-        provenance = getattr(self, "_provenance_values", {}).get(str(path), {})
         data = [
-            ("출처 정보 · C2PA", provenance.get("credential", "선택 기능 · 도구 메뉴에서 확인")),
-            ("AI 생성·편집 선언", provenance.get("ai", "판별 불가")),
-            ("출처 검증", provenance.get("validation", "검사하지 않음")),
             ("파일 형식", format_text),
             ("파일 크기", size_text),
             ("해상도", resolution_text),

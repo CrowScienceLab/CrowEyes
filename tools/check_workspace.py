@@ -47,7 +47,7 @@ viewer.geometry('800x600');pump()
 assert viewer.toolbar.winfo_reqheight()<250
 assert [b._croweyes_action for b in viewer._toolbar_buttons][-5:]==['annotation','highlight','mosaic','compare','save']
 assert all(not b.cget('text') for b in viewer._toolbar_buttons)
-assert not viewer._info_visible and viewer._info_tab.winfo_ismapped()
+assert not viewer._info_visible and viewer._navigation_tasks.winfo_ismapped()
 viewer.toggle_info_panel();pump();assert len(viewer.paned.panes())==3
 viewer.toggle_info_panel();pump();assert len(viewer.paned.panes())==2
 thumb=viewer._make_thumb_pil(folder/'photo-0.png',72)
@@ -58,7 +58,7 @@ assert dialog.winfo_rootx()+dialog.winfo_width()<=viewer.winfo_rootx()+viewer.wi
 dialog.destroy()
 viewer.show_preferences();pump()
 for child in viewer.winfo_children():
-    if child.__class__.__name__=='EmbeddedDialog':
+    if child.__class__.__name__ in ('EmbeddedDialog','FittedDialog'):
         assert child.winfo_toplevel() is viewer
         child.destroy()
 from croweyes_workflows import Catalog
@@ -66,7 +66,7 @@ viewer._catalog=Catalog(folder/'index.sqlite3')
 viewer.index_collection(False);pump(600)
 assert len(viewer._catalog.all())==8
 for child in viewer.winfo_children():
-    if child.__class__.__name__=='EmbeddedDialog':child.destroy()
+    if child.__class__.__name__ in ('EmbeddedDialog','FittedDialog'):child.destroy()
 assert not hasattr(viewer,'semantic_dialog') and not hasattr(viewer,'catalog_dialog')
 viewer.set_workspace('viewer');pump()
 assert viewer.bright_var.get()==state[3]

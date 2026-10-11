@@ -124,6 +124,7 @@ class WorkspaceMixin(DockMixin,InlineEditorMixin):
         self._interrupt_slideshow()
         if self._image_fullscreen:self.exit_image_fullscreen()
         self._workspace_mode=mode
+        if self._info_visible:self.hide_info_panel()
         self.end_edit_tool()
         self.toolbar.populate()
         self._apply_theme()
@@ -140,16 +141,16 @@ class WorkspaceMixin(DockMixin,InlineEditorMixin):
         self.end_edit_tool()
         self.configure(menu='')
         super().enter_image_fullscreen()
-        self._info_tab.grid_remove()
 
     def exit_image_fullscreen(self):
         super().exit_image_fullscreen()
         self.configure(menu=self.toolbar.menu_row)
-        self._info_tab.grid()
         self._restore_panes()
 
     def _apply_theme(self):
         super()._apply_theme()
+        self._brand_label.tk.call(self._brand_label._w,'configure','-style','Brand.TLabel')
+        self._brand_logo_label.tk.call(self._brand_logo_label._w,'configure','-style','Logo.TLabel')
         if hasattr(self.toolbar,'mode_switch'):self.toolbar.mode_switch.redraw()
         if hasattr(self,'_dock_pages'):
             t=self._theme()
@@ -159,7 +160,7 @@ class WorkspaceMixin(DockMixin,InlineEditorMixin):
             for page in self._dock_pages.values():
                 if hasattr(page,'canvas'):page.canvas.configure(bg=t['panel'])
                 paint(page)
-            self._clear_pixel()
+            self._sync_dock_buttons()
 
     def _rebuild_icon_chrome(self):
         super()._rebuild_icon_chrome()
@@ -179,30 +180,45 @@ class WorkspaceMixin(DockMixin,InlineEditorMixin):
             if original is not None:menu.add_cascade(label=name,menu=original)
 
     def show_preferences(self):
-        c=core(self)
-        win,frame=self._window('환경설정','540x470')
+        from croweyes_dialogs import FittedDialog,settings_combo
+        c=core(self);win=FittedDialog(self,'환경설정',660);frame=win.body
         theme=tk.StringVar(value=c.THEME_LABELS.get(self.settings.get('ui_theme','croweyes_dark')))
         wheel=tk.StringVar(value=c.WHEEL_ACTION_LABELS.get(self.settings.get('mouse_wheel_action','navigate')))
         safety=tk.StringVar(value=self._content_filter_mode)
         fit=tk.BooleanVar(value=self.settings.get('fit_on_open',True))
         updates=tk.BooleanVar(value=self.settings.get('auto_check_updates',True))
         slide=tk.IntVar(value=self.settings.get('slideshow_ms',3000))
-        ttk.Label(frame,text='테마').pack(anchor='w')
-        ttk.Combobox(frame,textvariable=theme,values=list(c.THEME_LABELS.values()),state='readonly').pack(fill='x',pady=4)
-        ttk.Label(frame,text='마우스 휠 동작').pack(anchor='w')
-        ttk.Combobox(frame,textvariable=wheel,values=list(c.WHEEL_ACTION_LABELS.values()),state='readonly').pack(fill='x',pady=4)
-        ttk.Checkbutton(frame,text='열 때 화면에 맞춤',variable=fit).pack(anchor='w')
-        ttk.Checkbutton(frame,text='시작할 때 업데이트 확인',variable=updates).pack(anchor='w')
-        ttk.Label(frame,text='슬라이드쇼 간격 (ms)').pack(anchor='w',pady=(8,0))
-        ttk.Spinbox(frame,from_=200,to=60000,textvariable=slide).pack(fill='x')
-        ttk.Separator(frame).pack(fill='x',pady=10)
-        ttk.Label(frame,text='성인 콘텐츠 필터 · PC 안에서 처리').pack(anchor='w')
-        ttk.Radiobutton(frame,text='끄기 (기본값)',variable=safety,value='off').pack(anchor='w')
-        ttk.Radiobutton(frame,text='켜기 · 판별이 불가능한 파일도 숨김',variable=safety,value='explicit').pack(anchor='w')
+        for column in (0,1):frame.columnconfigure(column,weight=1,uniform='settings')
+        appearance=ttk.Frame(frame,style='Panel.TFrame',padding=(0,0,16,0))
+        appearance.grid(row=0,column=0,sticky='nsew')
+        interaction=ttk.Frame(frame,style='Panel.TFrame')
+        interaction.grid(row=0,column=1,sticky='nsew')
+        ttk.Label(appearance,text='화면 모양 · 파랑',style='Section.TLabel').pack(anchor='w',pady=(0,6))
+        settings_combo(appearance,self,theme,list(c.THEME_LABELS.values()),'appearance').pack(anchor='w',pady=5)
+        ttk.Checkbutton(appearance,text='열 때 화면에 맞춤',variable=fit).pack(anchor='w',pady=6)
+        ttk.Checkbutton(appearance,text='시작할 때 업데이트 확인',variable=updates).pack(anchor='w',pady=6)
+        ttk.Label(interaction,text='마우스·재생 · 초록',style='Section.TLabel').pack(anchor='w',pady=(0,6))
+        settings_combo(interaction,self,wheel,list(c.WHEEL_ACTION_LABELS.values()),'interaction').pack(anchor='w',pady=5)
+        ttk.Label(interaction,text='슬라이드쇼 간격 (밀리초)').pack(anchor='w',pady=(6,3))
+        ttk.Spinbox(interaction,from_=200,to=60000,textvariable=slide,width=12).pack(anchor='w',pady=4)
+        ttk.Separator(frame).grid(row=1,column=0,columnspan=2,sticky='ew',pady=12)
+        filter_frame=ttk.Frame(frame,style='Panel.TFrame')
+        filter_frame.grid(row=2,column=0,columnspan=2,sticky='ew')
+        ttk.Label(filter_frame,text='성인 콘텐츠 필터 · PC 안에서 처리',style='Section.TLabel').pack(anchor='w',pady=(0,6))
+        ttk.Radiobutton(filter_frame,text='끄기',variable=safety,value='off').pack(side='left',padx=(0,14))
+        ttk.Radiobutton(filter_frame,text='켜기 · 판별 불가 파일도 숨김',variable=safety,value='explicit').pack(side='left')
+        hint=ttk.Label(frame,text='필터는 켤 때 모델을 불러옵니다. 화면 모양과 휠 동작은 색상으로 구분합니다.',wraplength=580)
+        hint.grid(row=3,column=0,columnspan=2,sticky='w',pady=10)
+        error=tk.StringVar()
+        ttk.Label(frame,textvariable=error,foreground='#E46A68',wraplength=580).grid(row=4,column=0,columnspan=2,sticky='w')
         def apply():
-            values=(next(k for k,v in c.THEME_LABELS.items() if v==theme.get()),next(k for k,v in c.WHEEL_ACTION_LABELS.items() if v==wheel.get()),fit.get(),updates.get(),slide.get(),safety.get())
-            if not 200<=values[4]<=60000:return
+            try:
+                interval=slide.get()
+                if not 200<=interval<=60000:raise ValueError()
+            except (ValueError,tk.TclError):
+                error.set('재생 간격은 200~60000 밀리초로 입력하세요.');return
+            values=(next(k for k,v in c.THEME_LABELS.items() if v==theme.get()),next(k for k,v in c.WHEEL_ACTION_LABELS.items() if v==wheel.get()),fit.get(),updates.get(),interval,safety.get())
             win.destroy()
             self.settings.update(mouse_wheel_action=values[1],fit_on_open=values[2],auto_check_updates=values[3],slideshow_ms=values[4])
             self.set_ui_theme(values[0]);self._set_content_filter(values[5]);c.save_settings(self.settings)
-        ttk.Button(frame,text='적용',command=apply).pack(pady=10)
+        ttk.Button(frame,text='적용',command=apply).grid(row=5,column=0,columnspan=2,pady=(6,0))

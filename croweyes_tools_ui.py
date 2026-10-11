@@ -440,18 +440,37 @@ class FeaturesMixin:
         self._job('출처 정보 확인',lambda c,p:inspect(path),done)
 
     def extensions_dialog(self):
-        win,frame=self._window('기본 포함 기능','500x290')
-        ttk.Label(frame,text='C2PA 출처 확인 · 사용자가 검사할 때 로드\n성인 콘텐츠 필터 · 설정에서 켤 때 로드\nRAW 미리보기 · RAW 파일을 열 때 로드',justify='left').pack(anchor='w',pady=8)
-        ttk.Label(frame,text='별도 설치가 필요하지 않습니다.\n일반 사진 보기에서는 모델을 불러오지 않습니다.',justify='left').pack(anchor='w',pady=8)
-        ttk.Button(frame,text='콘텐츠 필터 설정',command=lambda:(win.destroy(),self.show_preferences())).pack(pady=5)
+        from croweyes_dialogs import FittedDialog
+        win=FittedDialog(self,'기본 포함 기능 안내',700);frame=win.body
+        ttk.Label(frame,text='별도 설치 없이 사용 · 필요한 순간에만 기능을 불러옵니다.',style='Section.TLabel',wraplength=640).pack(anchor='w',pady=(0,10))
+        tabs=ttk.Notebook(frame);tabs.pack(fill='both',expand=True)
+        groups=[]
+        for title in ('빠른 보기·출처','필터·글자 인식','편집·단축키'):
+            page=ttk.Frame(tabs,style='Panel.TFrame',padding=10);tabs.add(page,text=title);groups.append(page)
+        features=[
+            ('빠른 이미지 보기','일반 사진은 AI 모델 없이 바로 봅니다. RAW는 파일을 열 때 미리보기를 준비합니다.\n열기 Ctrl+O · 맞춤 Ctrl+1 · 원본 크기 Ctrl+0'),
+            ('C2PA 출처 / AI 생성 판단','상단 AI 생성 판단 → 현재 사진 출처 검사. 생성·편집 선언과 출처 검증을 확인합니다. 기록이 없으면 판별 불가입니다.'),
+            ('성인 콘텐츠 필터','상단 성인 필터에서 켜고 적용합니다. PC 안에서 처리하며 판별 불가 파일도 숨깁니다. 기본값은 끄기입니다.'),
+            ('글자 인식 / 촬영일 색인','상단 도구에서 OCR과 색인을 실행합니다. 인식 결과는 복사하고, 색인한 글자·촬영일은 PC의 검색 DB에서 찾습니다.'),
+            ('사본으로 편집·저장','주석·형광펜·모자이크, 영역 복사, 크기·비율 변경을 제공합니다.\n취소 Ctrl+Z · 재실행 Ctrl+Y · 저장 Ctrl+S'),
+            ('사진에 집중하는 화면','공통 4열 파일목록, 필요할 때 여는 정보·검사 열을 사용합니다.\n이전/다음 ←/→ · 재생 F5 · 정보 F8 · 전체 화면 F11')]
+        for i,(title,description) in enumerate(features):
+            card=ttk.Frame(groups[i//2],style='Panel.TFrame',padding=(0,4,10,8))
+            card.grid(row=0,column=i%2,sticky='nsew')
+            ttk.Label(card,text=title,style='Section.TLabel').pack(anchor='w',pady=(0,4))
+            ttk.Label(card,text=description,wraplength=282,justify='left').pack(anchor='w')
+        for page in groups:
+            for i in (0,1):page.columnconfigure(i,weight=1,uniform='feature')
+        ttk.Button(frame,text='환경설정 열기',command=lambda:(win.destroy(),self.show_preferences())).pack(pady=(8,0))
 
     def performance_dialog(self):
-        win,frame=self._window('보기·성능 옵션')
+        from croweyes_dialogs import FittedDialog
+        win=FittedDialog(self,'보기·성능 옵션',640);frame=win.body
         keep=tk.BooleanVar(value=self.settings.get('keep_zoom',False))
         color=tk.BooleanVar(value=self.settings.get('color_management',True))
         for label,var in [('다음 이미지에서 확대율 유지',keep),('ICC 프로파일을 sRGB로 변환',color)]:
             ttk.Checkbutton(frame,text=label,variable=var).pack(anchor='w')
-        ttk.Label(frame,text='고해상도 이미지는 최대 4096px 축소 미리보기로 표시합니다.\n이미지 내보내기는 현재 표시 픽셀 기준입니다.\n일괄 처리에서 원본 파일을 읽어 지정 크기로 저장할 수 있습니다.').pack(pady=10)
+        ttk.Label(frame,text='고해상도 이미지는 최대 4096px 축소 미리보기로 표시합니다.\n이미지 내보내기는 현재 표시 픽셀 기준입니다.\n일괄 처리에서 원본 파일을 읽어 지정 크기로 저장할 수 있습니다.',wraplength=590,justify='left').pack(anchor='w',pady=14)
         def save():
             changed=self.settings.get('color_management',True)!=color.get()
             self.settings.update(keep_zoom=keep.get(),color_management=color.get())

@@ -81,10 +81,6 @@ class DockMixin:
             self._activate_dock('정보')
         else:super().toggle_info_panel()
 
-    def _update_info(self):
-        super()._update_info()
-        if hasattr(self,'_pixel_label'):self._clear_pixel()
-
     def _build_dock(self):
         panel=self._right_panel
         self._dock_page='정보';self._dock_pages={}
@@ -92,13 +88,6 @@ class DockMixin:
         self._dock_title=original[0]
         self._dock_info=original[1]
         self._dock_pages['정보']=self._dock_info
-        footer=ttk.Frame(self._dock_info,style='Panel.TFrame')
-        footer.pack(side='bottom',fill='x',before=self.info_text)
-        self._pixel_swatch=tk.Label(footer,width=3,height=2,relief='solid',borderwidth=1,bg=self._theme()['panel'])
-        self._pixel_swatch.pack(side='left',padx=4,pady=8)
-        self._pixel_label=ttk.Label(footer,text='이미지 위로 포인터를 이동하세요',wraplength=190)
-        self._pixel_label.pack(side='left',fill='x',expand=True)
-        self.canvas.bind('<Leave>',lambda e:self._clear_pixel(),add='+')
         for name in ('AI 생성 판단','성인 필터','도구'):
             self._dock_pages[name]=DockPage(panel,self)
         ai=self._dock_pages['AI 생성 판단'].body
@@ -128,18 +117,13 @@ class DockMixin:
                   ('촬영일 색인',lambda:self.index_collection(False)),('OCR 내용 색인',lambda:self.index_collection(True)),
                   ('촬영일·글자 검색',self.search_dialog)]
         for text,command in commands:ttk.Button(tools,text=text,command=command).pack(fill='x',pady=3,before=self._dock_tasks['도구'])
-        self._dock_tabs=ttk.Frame(self,style='Toolbar.TFrame')
-        self._dock_tab_buttons={}
-        for name,label in [('정보','정\n보'),('AI 생성 판단','AI 생성\n판단'),('성인 필터','성인\n필터'),('도구','도\n구')]:
-            button=ttk.Button(self._dock_tabs,text=label,width=6,command=lambda n=name:self.select_dock(n))
-            button.pack(fill='x',pady=3,ipady=4)
-            self._dock_tab_buttons[name]=button
-        self._info_tab=self._dock_tabs
-        self._dock_tabs.grid(row=2,column=1,sticky='ne',pady=12,padx=(0,4))
+    def _sync_dock_buttons(self):
+        for name,button in getattr(self,'_dock_tab_buttons',{}).items():
+            button.configure(style='Accent.Icon.Tool.TButton' if self._info_visible and name==self._dock_page else 'Icon.Tool.TButton')
 
-    def _clear_pixel(self):
-        self._pixel_label.configure(text='이미지 위로 포인터를 이동하세요')
-        self._pixel_swatch.configure(bg=self._theme()['panel'])
+    def hide_info_panel(self):
+        super().hide_info_panel()
+        self._sync_dock_buttons()
 
     def select_dock(self,name):
         if name==self._dock_page and self._info_visible:
@@ -151,11 +135,11 @@ class DockMixin:
         if name=='성인 필터':self._dock_filter.set(self._content_filter_mode)
         for key,page in self._dock_pages.items():
             page.pack_forget()
-            self._dock_tab_buttons[key].configure(style='Accent.Icon.Tool.TButton' if key==name else 'Icon.Tool.TButton')
         self._dock_pages[name].pack(fill='both',expand=True)
         for child in self._dock_title.winfo_children():
             if isinstance(child,ttk.Label):child.configure(text='사진 정보' if name=='정보' else name)
         if not self._info_visible:self.show_info_panel()
+        self._sync_dock_buttons()
 
     def _window(self,title,size=None):
         ai=any(word in title for word in ('출처','C2PA'))

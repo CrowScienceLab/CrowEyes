@@ -16,7 +16,7 @@ def pump(ms=150):
     end=time.monotonic()+ms/1000
     while time.monotonic()<end:v.update();time.sleep(.01)
 pump(1000)
-assert not v._info_visible and v._info_tab.winfo_ismapped()
+assert not v._info_visible and v._navigation_tasks.winfo_ismapped()
 v.set_list_mode('icons');pump()
 for _ in range(30):v._on_grid_wheel(SimpleNamespace(delta=120))
 pump();assert v._grid_canvas.yview()[0]==0
@@ -33,8 +33,8 @@ for page in ('정보','AI 생성 판단','성인 필터','도구'):
 assert not any(x in sys.modules for x in ('c2pa','onnxruntime','rawpy'))
 v._activate_dock('정보');pump()
 v._on_motion(SimpleNamespace(x=v.canvas.winfo_width()/2,y=v.canvas.winfo_height()/2))
-assert '#2A5B92' in v._pixel_label.cget('text')
-v._on_motion(SimpleNamespace(x=-5000,y=-5000));assert '이동' in v._pixel_label.cget('text')
+assert '#2A5B92' in v.status.cget('text') and not hasattr(v,'_pixel_label')
+v._on_motion(SimpleNamespace(x=-5000,y=-5000))
 win,body=v._window('글자 인식');pump();assert str(win.master)==str(v._dock_tasks['도구'])
 win.destroy()
 v._text('인식된 글자','테스트 OCR 결과');pump();assert v._dock_page=='도구'
@@ -43,9 +43,9 @@ v.hide_info_panel();v.set_workspace('editor');pump()
 assert len(v.paned.panes())==2 and v._filmstrip is None
 v.toolbar.mode_switch.event_generate('<Button-1>',x=25,y=20);pump();assert v._workspace_mode=='viewer'
 v.toolbar.mode_switch.event_generate('<Button-1>',x=110,y=20);pump();assert v._workspace_mode=='editor'
-v.enter_image_fullscreen();pump();assert not v._info_tab.winfo_ismapped()
-v.exit_image_fullscreen();pump();assert v._info_tab.winfo_ismapped()
+v.enter_image_fullscreen();pump();assert not v._navigation_tasks.winfo_ismapped()
+v.exit_image_fullscreen();pump();assert v._navigation_tasks.winfo_ismapped()
 for theme in ('bright_sky_blue','croweyes_dark'):v.set_ui_theme(theme);pump()
 assert not errors,errors
 v._on_close()
-print('PASS: short-grid scroll boundaries, list selectors, four dock pages, lazy models, pixel RGB/hex, inline OCR/C2PA results, slide switch, themes/fullscreen')
+print('PASS: short-grid scroll boundaries, list selectors, four dock pages, lazy models, status pixel hex, inline OCR/C2PA results, slide switch, themes/fullscreen')
