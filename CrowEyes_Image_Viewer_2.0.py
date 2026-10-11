@@ -1355,8 +1355,14 @@ class CrowEyesIconSet:
             accents = {"open_image": ("#7DD3FC", "#0369A1"), "folder": ("#FBBF24", "#A16207"),
                        "save": ("#6EE7B7", "#047857"), "print": ("#C4B5FD", "#6D28D9"),
                        "play": ("#6EE7B7", "#047857"), "pause": ("#FBBF24", "#A16207"),
-                       "rotate_right": ("#FDA4AF", "#BE123C")}
+                       "rotate_right": ("#FDA4AF", "#BE123C"),
+                       "previous": ("#7DD3FC", "#0284C7"), "next": ("#7DD3FC", "#0284C7"),
+                       "undo": ("#FBBF24", "#B45309"), "redo": ("#FBBF24", "#B45309"),
+                       "annotation": ("#C4B5FD", "#7C3AED"), "highlight": ("#FDE047", "#CA8A04"),
+                       "mosaic": ("#FDA4AF", "#DB2777"), "adjust": ("#FDBA74", "#EA580C"),
+                       "compare": ("#A5B4FC", "#6366F1"), "info": ("#7DD3FC", "#0284C7")}
             accent = self._rgb(accents.get(name, (self.colors["accent"], self.colors["accent"]))[0 if dark else 1])
+            fg = accent
         # CrowLink/CrowPack-inspired visual language: generous optical scale,
         # rounded geometry, strong white/silver structure and cyan accents.
         line = max(6, int(size * 0.085 * scale))
@@ -1594,6 +1600,28 @@ class CrowEyesIconSet:
             poly([(size * .32, size * .50), (size * .45, size * .38), (size * .45, size * .62)], accent)
             poly([(size * .55, size * .38), (size * .68, size * .50), (size * .55, size * .62)], accent)
 
+        if toolbar:
+            from PIL import ImageFilter
+            glyph=image.resize((int(side*.80),int(side*.80)),Image.Resampling.LANCZOS)
+            tile=Image.new('RGBA',(side,side))
+            mask=Image.new('L',(side,side));md=ImageDraw.Draw(mask)
+            md.rounded_rectangle((s,s,side-s,side-2*s),radius=side*.23,fill=255)
+            top=(66,79,94) if dark else (252,253,255)
+            bottom=(27,37,50) if dark else (199,210,224)
+            gradient=Image.new('RGBA',(side,side));gd=ImageDraw.Draw(gradient)
+            for y in range(side):
+                f=y/max(1,side-1)
+                gd.line((0,y,side,y),fill=tuple(int(a+(b-a)*f) for a,b in zip(top,bottom))+(255,))
+            tile.paste(gradient,(0,0),mask)
+            td=ImageDraw.Draw(tile)
+            td.rounded_rectangle((s,s,side-s,side-2*s),radius=side*.23,outline=(148,174,201,160),width=s)
+            td.arc((3*s,2*s,side-3*s,side*.48),180,360,fill=(255,255,255,150),width=s)
+            shadow=Image.new('RGBA',glyph.size,(0,0,0,170))
+            shadow.putalpha(glyph.getchannel('A').point(lambda a:int(a*.45)))
+            offset=int(side*.10)
+            tile.alpha_composite(shadow.filter(ImageFilter.GaussianBlur(s*.6)),(offset,offset+s))
+            tile.alpha_composite(glyph,(offset,offset))
+            image=tile
         image = image.resize((size, size), Image.Resampling.LANCZOS)
         return ImageTk.PhotoImage(image, master=self.root)
 
@@ -1838,6 +1866,12 @@ class PlaylistPanel(ttk.Frame):
         header = ttk.Frame(self, style="Panel.TFrame")
         header.pack(fill=tk.X)
         ttk.Label(header, text="파일 목록", style="Section.TLabel").pack(side=tk.LEFT)
+        viewer._list_mode_display_var = tk.StringVar(value=LIST_MODE_LABELS[viewer.list_mode])
+        choice = ttk.Combobox(header, textvariable=viewer._list_mode_display_var,
+                             values=list(LIST_MODE_LABELS.values()), state='readonly', width=12)
+        choice.pack(side=tk.LEFT, padx=6)
+        choice.bind('<<ComboboxSelected>>', lambda e: viewer.set_list_mode(
+            next(k for k,v in LIST_MODE_LABELS.items() if v==viewer._list_mode_display_var.get())))
         close = tk.Button(
             header, image=viewer._icons["close"], command=viewer.hide_playlist_panel,
             bd=0, relief=tk.FLAT, cursor="hand2", padx=4, pady=4,
@@ -2617,7 +2651,7 @@ class CrowEyesImageViewer(tb.Window):
             gc.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
             inner = ttk.Frame(gc, style="Panel.TFrame")
             win_id = gc.create_window((0, 0), window=inner, anchor="nw")
-            inner.bind("<Configure>", lambda e: gc.configure(scrollregion=gc.bbox("all")))
+            inner.bind("<Configure>", lambda e: self._sync_grid_scrollregion())
             gc.bind("<Configure>", lambda e: self._on_icon_grid_resize(e, win_id))
             self._bind_grid_wheel(gc)
             self._bind_grid_wheel(inner)
@@ -2645,10 +2679,21 @@ class CrowEyesImageViewer(tb.Window):
         if self._grid_canvas is None:
             return
         self._grid_canvas.itemconfigure(win_id, width=event.width)
+        self._sync_grid_scrollregion()
         self.after_idle(self._layout_icon_grid)
+
+    def _sync_grid_scrollregion(self):
+        gc, inner = self._grid_canvas, self._grid_inner
+        if gc is None or inner is None:return
+        height=max(gc.winfo_height(),inner.winfo_reqheight())
+        gc.configure(scrollregion=(0,0,max(1,gc.winfo_width()),height))
+        # Short collections must never scroll their origin above the viewport.
+        if inner.winfo_reqheight()<=gc.winfo_height() or gc.yview()[0]<0:
+            gc.yview_moveto(0)
 
     def _on_grid_wheel(self, event) -> None:
         if self._grid_canvas is not None:
+            self._sync_grid_scrollregion()
             delta = int(getattr(event, "delta", 0) or 0)
             if not delta:
                 delta = 120 if int(getattr(event, "num", 0) or 0) == 4 else -120
@@ -4112,7 +4157,7 @@ class CrowEyesImageViewer(tb.Window):
         ix = (event.x - cw - self.offset_x) / effective_zoom + self.display_image.width / 2
         iy = (event.y - ch - self.offset_y) / effective_zoom + self.display_image.height / 2
         x, y = int(ix), int(iy)
-        if 0 <= x < self.display_image.width and 0 <= y < self.display_image.height:
+        if 0 <= ix < self.display_image.width and 0 <= iy < self.display_image.height:
             px = self.display_image.getpixel((x, y))
             if isinstance(px, int):
                 px = (px,)
@@ -4126,6 +4171,12 @@ class CrowEyesImageViewer(tb.Window):
             self.status.configure(
                 text=f"Pixel ({x}, {y})  {color_hex}{anim}"
             )
+            if hasattr(self,'_pixel_label'):
+                self._pixel_label.configure(text=f'위치 ({x}, {y})\nRGB {red}, {green}, {blue}\n{color_hex} · 표시 이미지 기준')
+                self._pixel_swatch.configure(background=color_hex)
+        elif hasattr(self,'_pixel_label'):
+            self._pixel_label.configure(text='이미지 위로 포인터를 이동하세요')
+            self._pixel_swatch.configure(background=self._theme()['panel'])
 
     # ----- save / slideshow ------------------------------------------------
 

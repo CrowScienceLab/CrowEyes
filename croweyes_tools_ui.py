@@ -52,8 +52,8 @@ class FeaturesMixin:
 
     def _job(self, title, work, done):
         win, frame = self._window(title,'460x220')
-        progress = ttk.Progressbar(frame, length=360, maximum=100)
-        progress.pack()
+        progress = ttk.Progressbar(frame, length=220, maximum=100)
+        progress.pack(fill='x')
         status = ttk.Label(frame, text='작업 준비 중')
         status.pack(pady=8)
         cancelled = threading.Event()
@@ -436,7 +436,7 @@ class FeaturesMixin:
         def done(result):
             self._provenance_values[str(path)]=result
             self._update_info()
-            self._text('출처 정보 · C2PA',json.dumps(result,ensure_ascii=False,indent=2)+'\n\n출처 정보 없음은 AI가 아니라는 뜻이 아닙니다.')
+            self._text('출처 정보 · C2PA',f'파일: {path.name}\n\nAI 기록: {result.get("ai", "판별 불가")}\n출처 기록: {result.get("credential", "없음")}\n검증: {result.get("validation", "확인 불가")}\n\n'+json.dumps(result,ensure_ascii=False,indent=2)+'\n\n출처 정보 없음은 AI가 아니라는 뜻이 아닙니다.')
         self._job('출처 정보 확인',lambda c,p:inspect(path),done)
 
     def extensions_dialog(self):

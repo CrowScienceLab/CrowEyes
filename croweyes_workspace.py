@@ -3,6 +3,7 @@ import sys
 import tkinter as tk
 from tkinter import ttk
 from croweyes_inline import InlineEditorMixin
+from croweyes_dock import DockMixin, ModeSwitch
 
 
 def core(viewer):
@@ -25,11 +26,8 @@ class WorkspaceToolbar(ttk.Frame):
         viewer._brand_logo_label.pack(side=tk.LEFT,padx=(0,8))
         viewer._brand_label=ttk.Label(heading,text='CrowEyes',style='Brand.TLabel')
         viewer._brand_label.pack(side=tk.LEFT,padx=(0,24))
-        self.mode_buttons={}
-        for mode,label in [('viewer','뷰어'),('editor','편집')]:
-            button=ttk.Button(heading,text=label,command=lambda m=mode:viewer.set_workspace(m),style='Icon.Tool.TButton')
-            button.pack(side=tk.LEFT,padx=4,ipadx=12,ipady=5)
-            self.mode_buttons[mode]=button
+        self.mode_switch=ModeSwitch(heading,viewer)
+        self.mode_switch.pack(side=tk.LEFT,padx=4)
         self.buttons=ttk.Frame(self,style='Toolbar.TFrame')
         self.buttons.pack(side=tk.LEFT,fill=tk.X,expand=True)
         self.buttons.bind('<Configure>',lambda e:self.reflow(e.width))
@@ -90,9 +88,7 @@ class WorkspaceToolbar(ttk.Frame):
             v._toolbar_buttons.append(button)
             button._croweyes_action=name
             if name=='play':v._slide_btn=button
-        for mode,button in self.mode_buttons.items():
-            button._croweyes_style='Accent.Icon.Tool.TButton' if mode==v._workspace_mode else 'Icon.Tool.TButton'
-            button.configure(style=button._croweyes_style)
+        self.mode_switch.redraw()
         self.after_idle(lambda:self.reflow(self.buttons.winfo_width()))
         if hasattr(v,'slideshow_job'):v._update_slide_button()
 
@@ -107,7 +103,7 @@ class WorkspaceToolbar(ttk.Frame):
         for i,b in enumerate(buttons):b.grid(row=i//cols,column=i%cols,padx=2,pady=3,sticky='ew')
 
 
-class WorkspaceMixin(InlineEditorMixin):
+class WorkspaceMixin(DockMixin,InlineEditorMixin):
     def __init__(self,*args,**kwargs):
         self._workspace_mode='viewer'
         self._editor_panel=None
@@ -121,9 +117,7 @@ class WorkspaceMixin(InlineEditorMixin):
         for child in controls.winfo_children():child.pack_forget()
         self._safety_indicator.pack(side=tk.LEFT,padx=8)
         self._anim_btn.pack(side=tk.LEFT,padx=3)
-        self._info_tab=ttk.Button(self,text='정\n보',width=2,command=self.toggle_info_panel,style='Icon.Tool.TButton')
-        core(self).ToolTip(self._info_tab,'사진 정보 열기 / 닫기 (F8)')
-        self._info_tab.place(relx=1,rely=.48,anchor='e')
+        self._build_dock()
 
     def set_workspace(self,mode):
         if mode not in {'viewer','editor'} or mode==self._workspace_mode:return
@@ -146,13 +140,26 @@ class WorkspaceMixin(InlineEditorMixin):
         self.end_edit_tool()
         self.configure(menu='')
         super().enter_image_fullscreen()
-        self._info_tab.place_forget()
+        self._info_tab.grid_remove()
 
     def exit_image_fullscreen(self):
         super().exit_image_fullscreen()
         self.configure(menu=self.toolbar.menu_row)
-        self._info_tab.place(relx=1,rely=.48,anchor='e')
+        self._info_tab.grid()
         self._restore_panes()
+
+    def _apply_theme(self):
+        super()._apply_theme()
+        if hasattr(self.toolbar,'mode_switch'):self.toolbar.mode_switch.redraw()
+        if hasattr(self,'_dock_pages'):
+            t=self._theme()
+            def paint(widget):
+                if isinstance(widget,tk.Text):widget.configure(bg=t['panel'],fg=t['fg'],insertbackground=t['fg'])
+                for child in widget.winfo_children():paint(child)
+            for page in self._dock_pages.values():
+                if hasattr(page,'canvas'):page.canvas.configure(bg=t['panel'])
+                paint(page)
+            self._clear_pixel()
 
     def _rebuild_icon_chrome(self):
         super()._rebuild_icon_chrome()

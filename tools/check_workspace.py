@@ -53,8 +53,8 @@ viewer.toggle_info_panel();pump();assert len(viewer.paned.panes())==2
 thumb=viewer._make_thumb_pil(folder/'photo-0.png',72)
 assert thumb.size==(72,72) and thumb.getpixel((0,0))[3]==0 and thumb.getpixel((36,36))[3]==255
 dialog=viewer._text('OCR 결과','CrowEyes test');pump()
-assert dialog.winfo_toplevel() is viewer and dialog.winfo_x()>0 and dialog.winfo_y()>0
-assert dialog.winfo_x()+dialog.winfo_width()<=viewer.winfo_width()
+assert dialog.winfo_toplevel() is viewer and str(dialog.master)==str(viewer._dock_tasks['도구'])
+assert dialog.winfo_rootx()+dialog.winfo_width()<=viewer.winfo_rootx()+viewer.winfo_width()
 dialog.destroy()
 viewer.show_preferences();pump()
 for child in viewer.winfo_children():
