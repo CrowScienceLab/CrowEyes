@@ -1,6 +1,6 @@
 # CrowEyes Image Viewer
 
-CrowEyes 2.0.0은 빠른 이미지 보기와 요청 시 실행하는 편집·사진 관리 기능을 제공합니다. 제작자는 Crow Science Lab입니다. 최종 패키지 생성과 로컬 검증을 완료했으며 GitHub·Microsoft Store 게시 직전 상태입니다.
+CrowEyes 2.0.0은 빠른 이미지 보기와 요청 시 실행하는 편집·사진 관리 기능을 제공합니다. 제작자는 Crow Science Lab입니다. 최종 패키지 생성과 로컬 검증을 완료했으며 GitHub 2.0 정식 릴리스로 배포합니다. Microsoft Store 게시는 별도 진행합니다.
 
 ## 2.0 화면과 기능
 
@@ -16,7 +16,7 @@ version.json을 기준으로 앱/설치형/Portable 2.0.0, GitHub 태그 v2.0.0,
 
 release/review-v2.0.0에 Setup EXE, Portable ZIP, Store MSIX와 SHA256SUMS.txt가 있습니다. 이전 1.9e는 release/v1.9e 및 dist/v1.9e에 보존합니다. [최종 검증 및 정리](docs/FINAL_RELEASE_V2.md), [빌드 안내](docs/BUILD_V2.md), [변경 내역](RELEASE_NOTES_v2.0.0.md)를 참조하십시오.
 
-게시 이후 [GitHub 최신 릴리스](https://github.com/CrowScienceLab/CrowEyes/releases/latest)와 [Microsoft Store](https://apps.microsoft.com/detail/9NNHX36VPSQZ)에서 배포합니다. 현재 공개 릴리스는 로컬 최종 패키지와 다를 수 있습니다.
+게시 이후 [GitHub 최신 릴리스](https://github.com/CrowScienceLab/CrowEyes/releases/latest)와 [Microsoft Store](https://apps.microsoft.com/detail/9NNHX36VPSQZ)에서 배포합니다. GitHub 2.0 릴리스의 [자세한 기능·사용 안내](RELEASE_NOTES_v2.0.0.md)를 확인하세요. Microsoft Store 반영 시점은 GitHub와 다를 수 있습니다.
 
 ## 첫 실행과 업데이트
 
