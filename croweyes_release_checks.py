@@ -28,20 +28,27 @@ def run_workspace(viewer_type,report_path):
             viewer.rotate(90);pump(100);viewer.zoom_by(1.3)
             state=viewer._state();zoom=viewer.zoom
             viewer.set_workspace('editor');pump(600)
-            assert str(viewer._editor_panel) in viewer.paned.panes() and viewer._film_photos
+            assert str(viewer.left_panel) in viewer.paned.panes() and viewer._editor_panel is None and viewer._filmstrip is None
             assert viewer._state()==state and viewer.zoom==zoom
             viewer.set_workspace('viewer');pump(200)
             assert len(viewer.paned.panes())==2 and viewer._state()==state
             assert list(viewer._workspace_menus)==['파일','보기','편집','정리','도구','설정']
             viewer.geometry('800x600');viewer.set_workspace('editor');pump(400)
             assert viewer.toolbar.winfo_reqheight()<250
-            assert viewer._filmstrip.winfo_rooty()+viewer._filmstrip.winfo_height()<=viewer.winfo_rooty()+viewer.winfo_height()
-            assert all(child.winfo_rootx()+child.winfo_width()<=viewer.winfo_rootx()+viewer.winfo_width() for child in viewer._filmstrip.winfo_children())
             assert not viewer._info_visible and viewer._info_tab.winfo_ismapped()
             viewer.toggle_info_panel();pump(100);assert len(viewer.paned.panes())==3
             viewer.toggle_info_panel();pump(100);assert len(viewer.paned.panes())==2
             assert all(not b.cget('text') for b in viewer._toolbar_buttons)
-            assert [b._croweyes_action for b in viewer._toolbar_buttons]==['open_image','folder','previous','next','fit','zoom_out','actual','zoom_in','play','compare','info']
+            assert [b._croweyes_action for b in viewer._toolbar_buttons][-5:]==['annotation','highlight','mosaic','compare','save']
+            assert all(b.cget('style')=='Icon.Tool.TButton' for b in viewer._toolbar_buttons)
+            viewer.select_edit_tool('형광펜');pump(100)
+            from types import SimpleNamespace
+            x,y=viewer.canvas.winfo_width()/2,viewer.canvas.winfo_height()/2
+            viewer._pan_start(SimpleNamespace(x=x-20,y=y-20));viewer._pan_end(SimpleNamespace(x=x+20,y=y+20))
+            assert len(viewer._annotation_ops)==1
+            viewer.undo_edit();assert not viewer._annotation_ops
+            viewer.redo_edit();assert len(viewer._annotation_ops)==1
+            viewer.end_edit_tool()
             thumbnail=viewer._make_thumb_pil(folder/'photo-0.png',72)
             assert thumbnail.size==(72,72) and thumbnail.getpixel((0,0))[3]==0
             dialog=viewer._text('OCR 결과','test');pump(100)
@@ -51,7 +58,7 @@ def run_workspace(viewer_type,report_path):
             assert not [n for n in ('c2pa','numpy','onnxruntime','tokenizers') if n in sys.modules]
             viewer._on_close();viewer=None
             assert not errors,errors
-        results=dict(status='PASS',checks=['frozen viewer/editor','state retention','filmstrip','six menus','800x600 bounds','no heavy imports'],callback_errors=errors)
+        results=dict(status='PASS',checks=['frozen viewer/editor','state retention','shared file list','inline highlight and undo/redo','six menus','800x600 bounds','no heavy imports'],callback_errors=errors)
     except Exception as exc:
         import traceback
         results=dict(status='FAIL',error=str(exc),traceback=traceback.format_exc(),callback_errors=errors)

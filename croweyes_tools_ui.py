@@ -244,12 +244,6 @@ class FeaturesMixin:
             messagebox.showerror('이름 변경',str(exc),parent=self)
         self.refresh_folder()
 
-    def annotation_dialog(self):
-        if self.display_image is not None:
-            self._interrupt_slideshow()
-            from croweyes_annotation import editor
-            editor(self,self.display_image)
-
     def compare_before_after(self):
         if self.pil_image is not None:
             from croweyes_compare import show

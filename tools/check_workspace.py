@@ -28,14 +28,14 @@ viewer.rotate(90);pump();viewer.zoom_by(1.5)
 state=viewer._state();zoom=viewer.zoom
 for _ in range(3):
     viewer.set_workspace('editor');pump()
-    assert len(viewer.paned.panes())==2 and str(viewer._editor_panel) in viewer.paned.panes()
-    assert viewer.navigation_bar.winfo_ismapped() and viewer._filmstrip.winfo_ismapped()
+    assert len(viewer.paned.panes())==2 and str(viewer.left_panel) in viewer.paned.panes()
+    assert viewer.navigation_bar.winfo_ismapped() and viewer._filmstrip is None
     assert viewer._state()==state and viewer.zoom==zoom
     viewer.set_workspace('viewer');pump()
     assert len(viewer.paned.panes())==2 and viewer.navigation_bar.winfo_ismapped()
     assert viewer._state()==state and viewer.zoom==zoom
 viewer.set_workspace('editor');pump(700)
-assert viewer._film_photos
+assert viewer._editor_panel is None
 viewer.enter_image_fullscreen();pump();assert len(viewer.paned.panes())==1
 assert not viewer.cget('menu')
 viewer.exit_image_fullscreen();pump();assert len(viewer.paned.panes())==2
@@ -45,8 +45,7 @@ assert viewer._workspace_mode=='editor' and len(viewer.paned.panes())==2
 viewer.set_ui_theme('croweyes_dark');pump()
 viewer.geometry('800x600');pump()
 assert viewer.toolbar.winfo_reqheight()<250
-assert all(child.winfo_rootx()+child.winfo_width()<=viewer.winfo_rootx()+viewer.winfo_width() for child in viewer._filmstrip.winfo_children())
-assert [b._croweyes_action for b in viewer._toolbar_buttons]==['open_image','folder','previous','next','fit','zoom_out','actual','zoom_in','play','compare','info']
+assert [b._croweyes_action for b in viewer._toolbar_buttons][-5:]==['annotation','highlight','mosaic','compare','save']
 assert all(not b.cget('text') for b in viewer._toolbar_buttons)
 assert not viewer._info_visible and viewer._info_tab.winfo_ismapped()
 viewer.toggle_info_panel();pump();assert len(viewer.paned.panes())==3
@@ -74,4 +73,4 @@ assert viewer.bright_var.get()==state[3]
 assert not [name for name in ('c2pa','numpy','onnxruntime','tokenizers') if name in sys.modules]
 viewer._on_close()
 assert not errors,errors
-print('PASS: viewer/editor modes, state retention, menus, lazy filmstrip, fullscreen, theme, 800x600, no AI imports')
+print('PASS: viewer/editor modes, state retention, menus, shared file list, fullscreen, theme, 800x600, no AI imports')

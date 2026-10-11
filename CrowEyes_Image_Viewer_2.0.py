@@ -1310,7 +1310,7 @@ class CrowEyesIconSet:
             "flip_v", "brightness", "contrast", "theme", "panel", "shortcuts",
             "slideshow", "close", "print", "up", "refresh", "search", "view",
             "sort", "ascending", "descending", "copy", "delete", "rename", "location",
-            "computer", "undo", "redo", "compare",
+            "computer", "undo", "redo", "compare", "annotation", "highlight", "mosaic", "adjust", "restore", "resize",
         )
         for name in toolbar_icons:
             self.images[name] = self._render(name, 24)
@@ -1474,6 +1474,25 @@ class CrowEyesIconSet:
             for dx, dy in ((0, -.38), (.27, -.27), (.38, 0), (.27, .27), (0, .38), (-.27, .27), (-.38, 0), (-.27, -.27)):
                 poly([(size * (.50 + dx * .55), size * (.50 + dy * .55)),
                       (size * (.50 + dx), size * (.50 + dy))])
+        elif name in {"annotation", "highlight"}:
+            poly([(size*.25,size*.75),(size*.75,size*.25)],accent)
+            poly([(size*.25,size*.75),(size*.19,size*.86),(size*.35,size*.81)],fg)
+            if name == 'highlight':rectangle((size*.16,size*.82,size*.80,size*.91),outline=accent,fill=accent)
+        elif name == 'mosaic':
+            for row in range(3):
+                for col in range(3):
+                    rectangle((size*(.16+col*.24),size*(.16+row*.24),size*(.34+col*.24),size*(.34+row*.24)),outline=accent if (row+col)%2 else fg,fill=accent if (row+col)%2 else fg)
+        elif name == 'adjust':
+            for y,x in ((.25,.65),(.5,.35),(.75,.6)):
+                poly([(size*.18,size*y),(size*.82,size*y)],fg)
+                rectangle((size*(x-.06),size*(y-.09),size*(x+.06),size*(y+.09)),outline=accent,fill=accent)
+        elif name == 'restore':
+            draw.arc((int(size*.18*s),int(size*.18*s),int(size*.82*s),int(size*.82*s)),40,320,fill=accent,width=line)
+            poly([(size*.18,size*.18),(size*.18,size*.42),(size*.40,size*.42)],accent)
+        elif name == 'resize':
+            rectangle((size*.22,size*.22,size*.78,size*.78),outline=fg)
+            poly([(size*.12,size*.40),(size*.12,size*.12),(size*.40,size*.12)],accent)
+            poly([(size*.60,size*.88),(size*.88,size*.88),(size*.88,size*.60)],accent)
         elif name == "more":
             for x in (.27, .50, .73):
                 ellipse((size * (x - .055), size * .445, size * (x + .055), size * .555), outline=None, fill=fg, width=0)
@@ -3206,7 +3225,7 @@ class CrowEyesImageViewer(tb.Window):
             from croweyes_thumbnails import get, put
             thumb_settings=self.__dict__.get('settings', {})
             color=thumb_settings.get('color_management',True)
-            theme_key = 'rounded-v2-'+thumb_settings.get('ui_theme', 'croweyes_dark')+str(color)
+            theme_key = 'cover-v3-'+thumb_settings.get('ui_theme', 'croweyes_dark')+str(color)
             cached = get(path, size, theme_key)
             if cached is not None:
                 return cached
@@ -3227,7 +3246,7 @@ class CrowEyesImageViewer(tb.Window):
             else:
                 from croweyes_workflows import open_image
                 im = _frame_to_rgba(open_image(path, preview=True,color=color))
-            im.thumbnail((size, size), Image.Resampling.BILINEAR)
+            im = ImageOps.fit(im,(size,size),method=Image.Resampling.LANCZOS)
             t = self._theme()
             bg = Image.new("RGBA", (size, size), self._hex_to_rgba(t["panel"]))
             bg.paste(im, ((size - im.width) // 2, (size - im.height) // 2), im)

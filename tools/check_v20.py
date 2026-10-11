@@ -70,7 +70,7 @@ viewer.rotate(90)
 assert viewer.rotation==90
 viewer.undo_edit();assert viewer.rotation==0
 viewer.redo_edit();assert viewer.rotation==90
-viewer.restore_original();assert viewer._state()==(0,False,False,1.,1.)
+viewer.restore_original();assert viewer._state()==(0,False,False,1.,1.,())
 viewer.zoom_by(2);zoom=viewer.zoom
 assert zoom>0
 viewer._ensure_catalog()
