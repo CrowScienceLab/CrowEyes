@@ -16,6 +16,7 @@ release/update-v*/
 store/layout/
 .sdk-tools/
 .optional-vendor/
+.bundled-runtime/
 *.log
 .idea/
 .vscode/

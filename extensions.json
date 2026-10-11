@@ -13,10 +13,5 @@
     "filename": "CrowEyes_Module_formats_2.0.0_Windows_x64.zip",
     "sha256": "a78a30338f481dc29ddc92db952646c70e73c7063de5ed2ff93ff6a92c4cddef",
     "version": "2.0.0"
-  },
-  "semantic": {
-    "filename": "CrowEyes_Module_semantic_2.0.0_Windows_x64.zip",
-    "sha256": "a66c367499baab72f860777dfc08c75cc0faf6464fc4e16338364baf634c1142",
-    "version": "2.0.0"
   }
 }

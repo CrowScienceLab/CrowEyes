@@ -23,37 +23,14 @@ class FeaturesMixin:
         self.bind('<Control-z>', lambda e: self.undo_edit())
         self.bind('<Control-y>', lambda e: self.redo_edit())
 
-    def install_tools_menu(self, menu):
-        tools = tk.Menu(menu, tearoff=False)
-        for label, command in (
-            ('실행 취소 (Ctrl+Z)', self.undo_edit), ('재실행 (Ctrl+Y)', self.redo_edit),
-            ('원본 복원', self.restore_original), ('편집 전후 비교', self.compare_before_after),
-            ('일괄 변환·크기·이름 변경', self.batch_dialog), ('선택 파일 일괄 이름 변경', self.rename_batch_dialog),
-            ('주석·모자이크', self.annotation_dialog), ('선택 이미지 2/4장 비교', self.compare_selected),
-            ('품질·목표 용량 저장', self.quality_dialog), ('EXIF·GPS·색상 정보', self.metadata_dialog),
-            ('별점·태그·즐겨찾기', self.catalog_dialog), ('분류·날짜·내용 검색', self.search_dialog),
-            ('정확히 같은 파일 찾기', lambda: self.duplicate_dialog(False)),
-            ('AI 내용 검색 (선택 모듈)', self.semantic_dialog),
-            ('유사 이미지 찾기', lambda: self.duplicate_dialog(True)),
-            ('글자 인식 (OCR)', self.ocr_dialog), ('출처 정보 확인 (C2PA)', self.provenance_dialog),
-            ('선택 모듈 관리', self.extensions_dialog), ('보기·성능 옵션', self.performance_dialog),
-        ):
-            tools.add_command(label=label, command=command)
-        menu.add_cascade(label='2.0 작업 도구', menu=tools)
-
     def _window(self, title, size=None):
-        win = tk.Toplevel(self)
-        win.title(title)
-        win.transient(self)
-        if size:
-            win.geometry(size)
-        frame = ttk.Frame(win, padding=14)
-        frame.pack(fill='both', expand=True)
-        return win, frame
+        from croweyes_dialogs import EmbeddedDialog
+        win=EmbeddedDialog(self,title,size)
+        return win,win.body
 
     def _text(self, title, text):
-        win, frame = self._window(title, '780x520')
-        view = tk.Text(frame, wrap='word')
+        win, frame = self._window(title, '560x340')
+        view = tk.Text(frame, wrap='word',width=45,height=8,background=self._theme()['panel'],foreground=self._theme()['fg'],insertbackground=self._theme()['fg'],relief='flat')
         view.pack(fill='both', expand=True)
         view.insert('1.0', text)
         view.configure(state='disabled')
@@ -74,8 +51,8 @@ class FeaturesMixin:
                 raise ValueError(path.name+' · 콘텐츠 필터에 의해 작업이 제한되었습니다.')
 
     def _job(self, title, work, done):
-        win, frame = self._window(title)
-        progress = ttk.Progressbar(frame, length=420, maximum=100)
+        win, frame = self._window(title,'460x220')
+        progress = ttk.Progressbar(frame, length=360, maximum=100)
         progress.pack()
         status = ttk.Label(frame, text='작업 준비 중')
         status.pack(pady=8)
@@ -103,7 +80,7 @@ class FeaturesMixin:
                         win.destroy()
                         self._tool_cancels.remove(cancelled)
                         if msg[0] == 'error':
-                            messagebox.showerror(title, msg[1], parent=self)
+                            self._text(title,msg[1])
                         else:
                             done(msg[1])
                         return
@@ -338,7 +315,7 @@ class FeaturesMixin:
         def done(errors):
             self._catalog_rows=catalog.all()
             self._apply_playlist_filter()
-            self._text('색인 결과','취소된 작업은 완료된 항목까지 보존됩니다.\n'+('\n'.join(errors) if errors else '처리한 항목에 오류 없음'))
+            self._text('색인 결과','PC 검색 DB에 저장했습니다. 정리 → 촬영일·OCR 글자 검색에서 찾을 수 있습니다.\n취소된 작업은 완료된 항목까지 보존됩니다.\n'+('\n'.join(errors) if errors else '처리한 항목에 오류 없음'))
         self._job('OCR 색인' if ocr else '촬영 정보 색인',work,done)
 
     def _save_display_image(self, destination, image=None):
@@ -425,50 +402,20 @@ class FeaturesMixin:
             self._catalog = Catalog()
         self._catalog_rows = self._catalog.all()
 
-    def catalog_dialog(self):
-        paths=self._paths()
-        if not paths:
-            return
-        self._ensure_catalog()
-        item=self._catalog_rows.get(str(paths[0].resolve()),{})
-        win,frame=self._window('선택 사진 분류')
-        rating=tk.IntVar(value=item.get('rating',0))
-        favorite=tk.BooleanVar(value=bool(item.get('favorite',0)))
-        tags=tk.StringVar(value=item.get('tags',''))
-        ttk.Label(frame,text=f'{len(paths)}장에 적용 · 원본 파일은 변경하지 않습니다.').pack()
-        ttk.Combobox(frame,textvariable=rating,values=list(range(6)),state='readonly').pack()
-        ttk.Checkbutton(frame,text='즐겨찾기',variable=favorite).pack()
-        ttk.Label(frame,text='태그 (쉼표로 구분)').pack()
-        ttk.Entry(frame,textvariable=tags,width=45).pack()
-        def save():
-            for path in paths:
-                self._catalog.set(path,rating=rating.get(),favorite=int(favorite.get()),tags=tags.get())
-            self._catalog_rows=self._catalog.all()
-            win.destroy()
-            self._apply_playlist_filter()
-        ttk.Button(frame,text='적용',command=save).pack(pady=8)
-
     def search_dialog(self):
         self._ensure_catalog()
-        win,frame=self._window('분류·날짜·OCR 내용 검색')
-        favorite=tk.BooleanVar(value=False)
-        rating=tk.IntVar(value=0)
-        tag=tk.StringVar()
-        text=tk.StringVar()
-        date=tk.StringVar()
-        ttk.Checkbutton(frame,text='즐겨찾기만',variable=favorite).pack()
-        for label,var in [('최소 별점 (0~5)',rating),('태그',tag),('촬영일 앞부분 (예: 2026:10)',date),('OCR로 색인한 글자',text)]:
-            ttk.Label(frame,text=label).pack()
-            ttk.Entry(frame,textvariable=var,width=45).pack()
-        ttk.Label(frame,text='날짜·내용은 아래 색인을 실행한 파일에서 검색합니다.').pack(pady=8)
+        win,frame=self._window('촬영일·OCR 글자 검색','480x350')
+        text=tk.StringVar();date=tk.StringVar()
+        for label,var in [('촬영일 앞부분 (예: 2026:10)',date),('사진 속 글자',text)]:
+            ttk.Label(frame,text=label).pack(anchor='w')
+            ttk.Entry(frame,textvariable=var,width=38).pack(fill='x',pady=4)
         def apply():
-            self._collection_filter=dict(favorite=favorite.get(),rating=rating.get(),tag=tag.get().casefold(),date=date.get(),text=text.get().casefold())
-            self._apply_playlist_filter()
-            win.destroy()
-        ttk.Button(frame,text='검색 적용',command=apply).pack()
-        ttk.Button(frame,text='필터 해제',command=lambda:(self._collection_filter.clear(),self._apply_playlist_filter(),win.destroy())).pack()
-        ttk.Button(frame,text='현재 폴더 EXIF 색인',command=lambda:self.index_collection(False)).pack()
-        ttk.Button(frame,text='현재 폴더 OCR 내용 색인',command=lambda:self.index_collection(True)).pack()
+            self._collection_filter=dict(date=date.get(),text=text.get().casefold())
+            self._apply_playlist_filter();win.destroy()
+        ttk.Button(frame,text='검색 적용',command=apply).pack(pady=5)
+        ttk.Button(frame,text='검색 해제',command=lambda:(self._collection_filter.clear(),self._apply_playlist_filter(),win.destroy())).pack()
+        ttk.Button(frame,text='현재 폴더 촬영일 색인',command=lambda:self.index_collection(False)).pack(pady=4)
+        ttk.Button(frame,text='사진 속 글자 검색 준비 (OCR 색인)',command=lambda:self.index_collection(True)).pack()
 
     def _visible_playlist_indices(self):
         indices=super()._visible_playlist_indices()
@@ -477,7 +424,7 @@ class FeaturesMixin:
             return indices
         def matches(i):
             item=self._catalog_rows.get(str(self.folder_files[i].resolve()),{})
-            return (not f.get('favorite') or item.get('favorite')) and item.get('rating',0)>=f.get('rating',0) and f.get('tag','') in item.get('tags','').casefold() and item.get('taken','').startswith(f.get('date','')) and f.get('text','') in item.get('text','').casefold()
+            return item.get('taken','').startswith(f.get('date','')) and f.get('text','') in item.get('text','').casefold()
         return [i for i in indices if matches(i)]
 
     def duplicate_dialog(self, similar):
@@ -486,40 +433,6 @@ class FeaturesMixin:
         if not paths:
             return
         self._job('유사 이미지' if similar else '동일 파일',lambda c,p:duplicates(paths,similar,c,p),lambda results:self._text('비교 결과 · 자동 삭제하지 않습니다', '\n\n'.join(a+'\n'+b+f'\n차이 {d}' for a,b,d in results) or '일치 항목 없음'))
-
-    def semantic_dialog(self):
-        paths=list(self.folder_files)
-        if not paths:
-            return
-        query=simpledialog.askstring('AI 내용 검색','영어로 이미지 내용을 입력하세요 (예: a photo of a flower).\n한국어 글자 검색은 OCR 내용 검색을 사용하세요.\n처음 실행할 때만 선택 모듈을 로드하고 폴더를 색인합니다.',parent=self)
-        if not query:
-            return
-        def work(c,p):
-            self._guard_paths(paths,c)
-            from croweyes_semantic import Search
-            from croweyes_workflows import catalog_path
-            engine=Search(catalog_path().with_name('semantic.sqlite3'))
-            return engine.query(query,paths,c,p)
-        def done(result):
-            matches,errors=result
-            win,frame=self._window('내용 검색 결과 · 유사도 순위 (정확도 확률 아님)','850x520')
-            table=ttk.Treeview(frame,columns=('score','file'),show='headings')
-            table.heading('score',text='유사도')
-            table.heading('file',text='파일')
-            table.column('score',width=100)
-            table.column('file',width=660)
-            table.pack(fill='both',expand=True)
-            for i,(score,path) in enumerate(matches):
-                table.insert('', 'end', iid=str(i),values=(f'{score:.3f}',path))
-            def open_result(e=None):
-                if table.selection():
-                    path=Path(matches[int(table.selection()[0])][1])
-                    if path in self.folder_files:self.goto_index(self.folder_files.index(path))
-            table.bind('<Double-1>',open_result)
-            ttk.Button(frame,text='선택 이미지 열기',command=open_result).pack()
-            if errors:
-                ttk.Button(frame,text=f'처리 실패 {len(errors)}개 확인',command=lambda:self._text('실패한 파일','\n'.join(errors))).pack()
-        self._job('로컬 AI 내용 검색',work,done)
 
     def provenance_dialog(self):
         if not self.source_path:
@@ -533,20 +446,10 @@ class FeaturesMixin:
         self._job('출처 정보 확인',lambda c,p:inspect(path),done)
 
     def extensions_dialog(self):
-        from croweyes_extensions import available, install, manifest
-        win,frame=self._window('선택 모듈 관리')
-        ttk.Label(frame,text='이 빌드의 공식 모듈 ZIP만 SHA-256 검증 후 설치합니다.\n기본 보기에는 모델과 C2PA 라이브러리를 불러오지 않습니다.').pack()
-        for kind,label in [('provenance','C2PA 출처 확인'),('safety','성인 콘텐츠 필터'),('formats','RAW 미리보기'),('semantic','AI 내용 검색')]:
-            row=ttk.Frame(frame)
-            row.pack(fill='x',pady=6)
-            status=ttk.Label(row,text=label+(' · 설치됨' if available(kind) else ' · 미설치'))
-            status.pack(side='left')
-            def choose(k=kind,s=status):
-                archive=filedialog.askopenfilename(parent=win,title=manifest().get(k,{}).get('filename',k),filetypes=[('선택 모듈','*.zip')])
-                if archive:
-                    self._job('선택 모듈 설치',lambda c,p:install(archive,k),lambda r:s.configure(text='설치 완료 · 필요하면 앱을 다시 시작하세요'))
-            ttk.Button(row,text='ZIP 설치',command=choose).pack(side='right')
-        ttk.Button(frame,text='공식 다운로드 페이지',command=lambda:__import__('webbrowser').open('https://github.com/CrowScienceLab/CrowEyes/releases/latest')).pack(pady=8)
+        win,frame=self._window('기본 포함 기능','500x290')
+        ttk.Label(frame,text='C2PA 출처 확인 · 사용자가 검사할 때 로드\n성인 콘텐츠 필터 · 설정에서 켤 때 로드\nRAW 미리보기 · RAW 파일을 열 때 로드',justify='left').pack(anchor='w',pady=8)
+        ttk.Label(frame,text='별도 설치가 필요하지 않습니다.\n일반 사진 보기에서는 모델을 불러오지 않습니다.',justify='left').pack(anchor='w',pady=8)
+        ttk.Button(frame,text='콘텐츠 필터 설정',command=lambda:(win.destroy(),self.show_preferences())).pack(pady=5)
 
     def performance_dialog(self):
         win,frame=self._window('보기·성능 옵션')
@@ -578,6 +481,6 @@ class FeaturesMixin:
         import sys
         from croweyes_extensions import available
         if mode == 'explicit' and getattr(sys,'frozen',False) and not available('safety'):
-            messagebox.showinfo('성인 콘텐츠 필터','선택 모듈 관리에서 필터 모듈을 먼저 설치하세요.',parent=self)
+            self._text('성인 콘텐츠 필터','기본 포함 필터 파일이 누락되었습니다. 공식 배포 파일을 다시 설치하세요.')
             mode = 'off'
         return super()._set_content_filter(mode)

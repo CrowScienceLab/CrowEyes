@@ -13,6 +13,15 @@ from pathlib import Path, PurePosixPath
 _handles = []
 
 
+def bundled_root():
+    return (Path(getattr(sys,'_MEIPASS',Path(__file__).resolve().parent))/'bundled') if getattr(sys,'frozen',False) else Path(__file__).resolve().parent/'.bundled-runtime'
+
+
+def bundled(kind):
+    path=bundled_root()/'included.json'
+    return path.is_file() and kind in json.loads(path.read_text(encoding='utf-8'))
+
+
 def root():
     version = json.loads((Path(getattr(sys, '_MEIPASS', Path(__file__).resolve().parent))/'version.json').read_text())['version']
     return Path(os.environ.get('LOCALAPPDATA', str(Path.home()))) / 'CrowEyes' / 'extensions' / version
@@ -25,6 +34,7 @@ def manifest():
 
 
 def available(kind):
+    if bundled(kind):return True
     try:
         installed = root() / kind / 'installed.json'
         return installed.is_file() and json.loads(installed.read_text()) == manifest().get(kind)
@@ -67,6 +77,14 @@ def install(archive, kind):
 
 
 def load_optional(kind, module):
+    if bundled(kind):
+        path=bundled_root()
+        if str(path) not in sys.path:
+            sys.path.insert(0,str(path))
+            if os.name=='nt':
+                for folder in [path,*path.glob('*.libs'),path/'onnxruntime'/'capi',path/'rawpy',path/'c2pa']:
+                    if folder.is_dir():_handles.append(os.add_dll_directory(str(folder)))
+        return importlib.import_module(module)
     if not getattr(sys, 'frozen', False):
         return importlib.import_module(module)
     path = root() / kind
@@ -82,4 +100,5 @@ def load_optional(kind, module):
 
 
 def model_path():
+    if bundled('safety'):return bundled_root()/'assets'/'models'/'nudenet-320n.onnx'
     return root() / 'safety' / 'assets' / 'models' / 'nudenet-320n.onnx'

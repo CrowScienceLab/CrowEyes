@@ -18,13 +18,13 @@ class Catalog:
         self.path = Path(path or catalog_path())
         self.path.parent.mkdir(parents=True, exist_ok=True)
         with self.connect() as db:
-            db.execute('CREATE TABLE IF NOT EXISTS items(path TEXT PRIMARY KEY, rating INTEGER DEFAULT 0, favorite INTEGER DEFAULT 0, tags TEXT DEFAULT "", taken TEXT DEFAULT "", text TEXT DEFAULT "", fingerprint TEXT DEFAULT "")')
+            db.execute('CREATE TABLE IF NOT EXISTS items(path TEXT PRIMARY KEY, taken TEXT DEFAULT "", text TEXT DEFAULT "", fingerprint TEXT DEFAULT "")')
 
     def connect(self):
         return sqlite3.connect(self.path, timeout=10)
 
     def set(self, path, **fields):
-        valid = {'rating', 'favorite', 'tags', 'taken', 'text', 'fingerprint'}
+        valid = {'taken', 'text', 'fingerprint'}
         if not fields or not fields.keys() <= valid:
             raise ValueError('Unknown catalog field')
         path = str(Path(path).resolve())

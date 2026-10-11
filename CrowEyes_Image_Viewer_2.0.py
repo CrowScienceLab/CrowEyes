@@ -180,7 +180,7 @@ DEFAULT_SETTINGS = {
     "anim_playing": True,
     "sort_by": "name",  # name | date | size | ext
     "sort_desc": False,
-    "show_info_panel": True,
+    "show_info_panel": False,
     "ui_theme": "croweyes_dark",
     "show_playlist_panel": True,
     "show_context_bar": True,
@@ -1658,16 +1658,6 @@ class NavigationBar(ttk.Frame):
     def __init__(self, master: tk.Widget, viewer: "CrowEyesImageViewer") -> None:
         super().__init__(master, style="Chrome.TFrame", padding=(12, 7))
         self.columnconfigure(1, weight=1)
-        nav = ttk.Frame(self, style="Chrome.TFrame")
-        nav.grid(row=0, column=0, sticky="w", padx=(0, 8))
-        for icon, tip, command in (
-            ("refresh", "현재 위치 새로고침", viewer.refresh_folder),
-            ("computer", "내 컴퓨터 · 드라이브와 사용자 폴더", viewer.navigate_to_computer),
-        ):
-            button = _tool_button(nav, "", tip, viewer._action(command), 1, viewer._icons[icon])
-            button.pack(side=tk.LEFT, padx=(0, 3))
-            viewer._navigation_buttons.append(button)
-
         viewer._breadcrumb_frame = ttk.Frame(self, style="Chrome.TFrame", padding=(0, 0))
         viewer._breadcrumb_frame.grid(row=0, column=1, sticky="ew", padx=(0, 10))
 
@@ -2131,7 +2121,7 @@ class CrowEyesImageViewer(tb.Window):
         self.minsize(860, 520)
         self._image_fullscreen = False
         self._chrome_visible = True
-        self._info_visible = bool(self.settings.get("show_info_panel", True))
+        self._info_visible = False
         self._playlist_visible = bool(self.settings.get("show_playlist_panel", True))
         self._context_visible = bool(self.settings.get("show_context_bar", True))
         self._icon_cells: Dict[int, tk.Label] = {}
@@ -3216,7 +3206,7 @@ class CrowEyesImageViewer(tb.Window):
             from croweyes_thumbnails import get, put
             thumb_settings=self.__dict__.get('settings', {})
             color=thumb_settings.get('color_management',True)
-            theme_key = thumb_settings.get('ui_theme', 'croweyes_dark')+str(color)
+            theme_key = 'rounded-v2-'+thumb_settings.get('ui_theme', 'croweyes_dark')+str(color)
             cached = get(path, size, theme_key)
             if cached is not None:
                 return cached
@@ -3241,6 +3231,10 @@ class CrowEyesImageViewer(tb.Window):
             t = self._theme()
             bg = Image.new("RGBA", (size, size), self._hex_to_rgba(t["panel"]))
             bg.paste(im, ((size - im.width) // 2, (size - im.height) // 2), im)
+            from PIL import ImageDraw
+            mask=Image.new('L',(size,size),0)
+            ImageDraw.Draw(mask).rounded_rectangle((0,0,size-1,size-1),radius=max(3,size//8),fill=255)
+            bg.putalpha(mask)
             put(path, size, theme_key, bg)
             return bg
         except Exception:
@@ -4256,7 +4250,7 @@ class CrowEyesImageViewer(tb.Window):
         self._right_panel = InfoPanel(self.paned, self)
         self.paned.add(self.left_panel, weight=0)
         self.paned.add(self._center_panel, weight=1)
-        self.paned.add(self._right_panel, weight=0)
+        if self._info_visible:self.paned.add(self._right_panel, weight=0)
 
         self.context_bar = ContextControlBar(self, self)
         self.context_bar.grid(row=3, column=0, sticky="ew")

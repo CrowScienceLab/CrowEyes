@@ -14,5 +14,7 @@ for name in names:
     if name=='check_slideshow_toolbar.py':
         source=source.replace("== 36 for button in viewer._toolbar_buttons", "== 32 for button in viewer._toolbar_buttons")
         source=source.replace('len(viewer._toolbar_buttons) >= 12','len(viewer._toolbar_buttons) >= 11')
+        source=source.replace('all(re.search(r"[가-힣]", str(button.cget("text"))) for button in viewer._toolbar_buttons)','all(not button.cget("text") for button in viewer._toolbar_buttons)')
+        source=source.replace("button.winfo_ismapped() and button.cget('text')", "button.winfo_ismapped() and not button.cget('text')")
     print('RUN:',name,flush=True)
     exec(compile(source,str(path),'exec'),{'__file__':str(path),'__name__':'__main__'})

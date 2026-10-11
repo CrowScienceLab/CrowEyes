@@ -28,6 +28,8 @@ datas += [
     (str(Path('THIRD_PARTY_NOTICES.md').resolve()), '.'),
     (str(Path('licenses').resolve()), 'licenses'),
 ]
+bundled_root=Path('.bundled-runtime')
+datas += [(str(file.resolve()),str(Path('bundled')/file.relative_to(bundled_root).parent)) for file in bundled_root.rglob('*') if file.is_file() and '__pycache__' not in file.parts]
 
 runtime_dlls = (
     'libmpdec-4.dll', 'libcrypto-3-x64.dll', 'liblzma.dll', 'LIBBZ2.dll',
@@ -51,7 +53,7 @@ a = Analysis(
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],
-    excludes=['c2pa', 'onnxruntime', 'numpy', 'rawpy', 'pillow_heif', 'cryptography', 'tokenizers'],
+    excludes=['c2pa', 'onnxruntime', 'numpy', 'rawpy', 'pillow_heif', 'cryptography', 'tokenizers', 'croweyes_semantic'],
     noarchive=False,
     optimize=0,
 )

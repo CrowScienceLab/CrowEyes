@@ -42,7 +42,6 @@ def main():
         'provenance':package('provenance',dirs(VENDOR,['c2pa','c2pa_python-*.dist-info'])),
         'safety':package('safety',common+dirs(VENDOR,['onnxruntime','onnxruntime-*.dist-info'])+[(ROOT/'assets/models/nudenet-320n.onnx','assets/models/nudenet-320n.onnx')]),
         'formats':package('formats',common+dirs(FORMAT_VENDOR,['rawpy','rawpy.libs','rawpy-*.dist-info'])),
-        'semantic':package('semantic',common+dirs(VENDOR,['onnxruntime','onnxruntime-*.dist-info'])+dirs(ROOT/'.optional-vendor/semantic',['tokenizers','tokenizers-*.dist-info','models'])),
     }
     (ROOT/'extensions.json').write_text(json.dumps(records,indent=2),encoding='utf-8')
     print(json.dumps(records,indent=2))

@@ -17,13 +17,17 @@ for name in ('c2pa','numpy','onnxruntime','rawpy','tokenizers','pillow_heif'):
     assert not (distribution/'_internal'/name).exists(),name
 archives=list(release.glob('*'))
 checks={p.name:dict(bytes=p.stat().st_size,sha256=hashlib.file_digest(p.open('rb'),'sha256').hexdigest()) for p in archives if p.suffix in {'.exe','.zip','.msix'}}
-assert len(checks)==7,checks.keys()
-for kind,item in json.loads((ROOT/'extensions.json').read_text()).items():
-    assert checks[item['filename']]['sha256']==item['sha256']
-    with zipfile.ZipFile(release/item['filename']) as zipped:
-        assert zipped.testzip() is None
-        if kind=='formats':
-            assert not any('heif' in name.lower() or 'x265' in name.lower() for name in zipped.namelist())
+assert len(checks)==3,checks.keys()
+bundled=distribution/'_internal/bundled'
+assert set(json.loads((bundled/'included.json').read_text()))=={'provenance','safety','formats'}
+for package in ('c2pa','numpy','onnxruntime','rawpy'):assert (bundled/package).is_dir()
+assert not (bundled/'tokenizers').exists() and not (bundled/'models/clip').exists()
+assert (bundled/'assets/models/nudenet-320n.onnx').is_file()
+for source in (ROOT/'.bundled-runtime').rglob('*'):
+    if source.is_file() and '__pycache__' not in source.parts:
+        packaged=bundled/source.relative_to(ROOT/'.bundled-runtime')
+        assert packaged.is_file(),packaged
+        assert hashlib.file_digest(source.open('rb'),'sha256').digest()==hashlib.file_digest(packaged.open('rb'),'sha256').digest(),packaged
 with zipfile.ZipFile(release/f'CrowEyes_Portable_{version}_Windows_x64.zip') as zipped:
     assert 'CrowEyes.exe' in zipped.namelist() and zipped.testzip() is None
 with zipfile.ZipFile(release/f'CrowEyes_{data["store_version"]}_x64.msix') as zipped:
