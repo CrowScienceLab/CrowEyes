@@ -35,10 +35,10 @@ v._activate_dock('정보');pump()
 v._on_motion(SimpleNamespace(x=v.canvas.winfo_width()/2,y=v.canvas.winfo_height()/2))
 assert '#2A5B92' in v.status.cget('text') and not hasattr(v,'_pixel_label')
 v._on_motion(SimpleNamespace(x=-5000,y=-5000))
-win,body=v._window('글자 인식');pump();assert str(win.master)==str(v._dock_tasks['도구'])
+win,body=v._window('글자 인식');pump();assert win.master is v and win.__class__.__name__=='FittedDialog'
 win.destroy()
-v._text('인식된 글자','테스트 OCR 결과');pump();assert v._dock_page=='도구'
-v._text('출처 정보 · C2PA','판별 불가');pump();assert v._dock_page=='AI 생성 판단'
+win=v._text('인식된 글자','테스트 OCR 결과');pump();assert win.master is v;win.destroy()
+win=v._text('출처 정보 · C2PA','판별 불가');pump();assert win.master is v;win.destroy()
 v.hide_info_panel();v.set_workspace('editor');pump()
 assert len(v.paned.panes())==2 and v._filmstrip is None
 v.toolbar.mode_switch.event_generate('<Button-1>',x=25,y=20);pump();assert v._workspace_mode=='viewer'

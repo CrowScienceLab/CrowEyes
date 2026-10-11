@@ -26,13 +26,35 @@ def run_workspace(viewer_type,report_path):
             pump(1200)
             assert viewer.display_image is not None
             assert [b._croweyes_action for b in viewer._navigation_tasks.winfo_children()]==['ai_generated','shield','ocr_region','index']
-            assert viewer._breadcrumb_targets[0].cget('text')=='컴퓨터'
+            assert viewer._breadcrumb_targets[0].cget('image')
             for i,state in [(0,0),(2,4),(4,1)]:
                 cell=viewer._icon_cells[i]
                 cell.event_generate('<ButtonPress-1>',x=15,y=15,state=state)
                 cell.event_generate('<ButtonRelease-1>',x=15,y=15,state=state)
                 pump(160)
             assert viewer._playlist_selection=={2,3,4}
+            assert [b._croweyes_action for b in viewer._toolbar_buttons][-4:]==['play','print','compare','info']
+            for link in viewer._breadcrumb_targets:
+                assert int(link.cget('borderwidth'))==0 and link.cget('bg')==viewer._theme()['toolbar']
+            inner=viewer._grid_inner
+            cell=viewer._icon_cells[5]
+            ex=cell.winfo_rootx()-inner.winfo_rootx()+cell.winfo_width()-1
+            ey=cell.winfo_rooty()-inner.winfo_rooty()+cell.winfo_height()-1
+            inner.event_generate('<ButtonPress-1>',x=1,y=1)
+            inner.event_generate('<B1-Motion>',x=ex,y=ey);pump(100)
+            inner.event_generate('<ButtonRelease-1>',x=ex,y=ey);pump(100)
+            assert viewer._playlist_selection=={0,1,4,5}
+            assert all(viewer._icon_cells[i].cget('highlightbackground')=='#32B9FF' for i in viewer._playlist_selection)
+            viewer.ocr_region()
+            assert 'region-ocr.cur' in viewer.canvas.cget('cursor')
+            viewer._cancel_region_copy()
+            win=viewer.adult_filter_dialog();pump(100)
+            assert win.master is viewer and len(viewer.paned.panes())==2
+            win.destroy()
+            win=viewer._text('정보 색인 결과','등록 6개\\n완료');pump(100)
+            assert win.winfo_reqheight()<=win.winfo_height()
+            assert not any(w.__class__.__name__=='Scrollbar' for w in win.body.winfo_children())
+            win.destroy()
             viewer.goto_index(0);pump(200)
             changes=[]
             binding=viewer.canvas.bind('<Configure>',lambda e:changes.append((e.width,e.height)),add='+')
@@ -80,7 +102,7 @@ def run_workspace(viewer_type,report_path):
             assert thumbnail.size==(72,72) and thumbnail.getpixel((0,0))[3]==0
             dialog=viewer._text('OCR 결과','test');pump(100)
             assert dialog.winfo_toplevel() is viewer and dialog.winfo_rootx()>viewer.winfo_rootx()
-            assert str(dialog.master)==str(viewer._dock_tasks['도구'])
+            assert dialog.master is viewer and dialog.__class__.__name__=='FittedDialog'
             dialog.destroy()
             for page in ('정보','AI 생성 판단','성인 필터','도구'):
                 viewer._activate_dock(page);pump(100)
@@ -95,7 +117,7 @@ def run_workspace(viewer_type,report_path):
             assert not [n for n in ('c2pa','numpy','onnxruntime','tokenizers') if n in sys.modules]
             viewer._on_close();viewer=None
             assert not errors,errors
-        results=dict(status='PASS',checks=['frozen viewer/editor','state retention','shared file list','inline highlight and undo/redo','six menus','800x600 bounds','breadcrumb links and four action icons','Ctrl/Shift grid events','no canvas resize on workspace switch','four-column default','fitted settings without scrollbars','inline OCR results','single status pixel display','grid scroll boundary','no heavy imports'],callback_errors=errors)
+        results=dict(status='PASS',checks=['frozen viewer/editor','state retention','shared file list','inline highlight and undo/redo','six menus','800x600 bounds','breadcrumb links and four action icons','Ctrl/Shift grid events','no canvas resize on workspace switch','four-column default','fitted settings without scrollbars','small internal OCR/index/filter cards','native OCR cursor in frozen build','plain breadcrumb','drag selection and strong border','print icon','single status pixel display','grid scroll boundary','no heavy imports'],callback_errors=errors)
     except Exception as exc:
         import traceback
         results=dict(status='FAIL',error=str(exc),traceback=traceback.format_exc(),callback_errors=errors)

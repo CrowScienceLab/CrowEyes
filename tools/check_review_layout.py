@@ -28,7 +28,7 @@ pump(1200)
 assert v.list_mode=='icons'
 assert {int(w.grid_info()['column']) for w in v._icon_grid_order}=={0,1,2,3}
 font=v.tk.splitlist(v.style.lookup('Brand.TLabel','font'))
-assert '23' in font and 'bold' in font and str(v._brand_label.cget('style'))=='Brand.TLabel',font
+assert '22' in font and 'bold' in font and str(v._brand_label.cget('style'))=='Brand.TLabel',font
 assert not hasattr(v,'_dock_tabs') and not hasattr(v,'_info_tab') and not hasattr(v,'_pixel_label')
 v._activate_dock('정보');pump()
 info=v.info_text.get('1.0','end')

@@ -1364,7 +1364,7 @@ class CrowEyesIconSet:
                        "undo": ("#FBBF24", "#B45309"), "redo": ("#FBBF24", "#B45309"),
                        "annotation": ("#C4B5FD", "#7C3AED"), "highlight": ("#FDE047", "#CA8A04"),
                        "mosaic": ("#FDA4AF", "#DB2777"), "adjust": ("#FDBA74", "#EA580C"),
-                       "compare": ("#A5B4FC", "#6366F1"), "info": ("#7DD3FC", "#0284C7"), "ai_generated": ("#C4B5FD","#7C3AED"), "shield": ("#6EE7B7","#047857"), "ocr_region": ("#FDBA74","#EA580C"), "index": ("#7DD3FC","#0284C7")}
+                       "compare": ("#A5B4FC", "#6366F1"), "info": ("#7DD3FC", "#0284C7"), "ai_generated": ("#C4B5FD","#7C3AED"), "shield": ("#FDA4AF","#BE123C"), "ocr_region": ("#FDBA74","#EA580C"), "index": ("#7DD3FC","#0284C7")}
             accent = self._rgb(accents.get(name, (self.colors["accent"], self.colors["accent"]))[0 if dark else 1])
             fg = accent
         # CrowLink/CrowPack-inspired visual language: generous optical scale,
@@ -1392,9 +1392,11 @@ class CrowEyesIconSet:
 
         if name in {"ai_generated","shield","ocr_region","index"}:
             if name=="shield":
-                points=[(size*.5,size*.12),(size*.84,size*.25),(size*.78,size*.65),(size*.5,size*.87),(size*.22,size*.65),(size*.16,size*.25),(size*.5,size*.12)]
-                draw.polygon([(int(x*s),int(y*s)) for x,y in points],fill=accent)
-                poly([(size*.32,size*.49),(size*.45,size*.62),(size*.68,size*.35)],(245,255,250),max(4,int(size*.065*s)))
+                ellipse((size*.10,size*.10,size*.90,size*.90),outline=(255,80,90),fill=(255,245,245),width=max(4,int(size*.09*s)))
+                from PIL import ImageFont
+                try:font=ImageFont.truetype('segoeuib.ttf',int(size*s*.42))
+                except OSError:font=ImageFont.load_default(size=int(size*s*.42))
+                draw.text((side*.5,side*.5),'19',font=font,anchor='mm',fill=(190,20,40))
             elif name=="index":
                 rectangle((size*.19,size*.23,size*.81,size*.75),outline=accent,fill=accent,radius=size*.06)
                 for y in (.25,.48,.70):ellipse((size*.19,size*(y-.09),size*.81,size*(y+.09)),outline=(230,248,255),width=max(3,line//2))
@@ -1737,8 +1739,8 @@ class NavigationBar(ttk.Frame):
         viewer._navigation_tasks=ttk.Frame(self,style='Chrome.TFrame')
         viewer._navigation_tasks.grid(row=0,column=3,sticky='e',padx=(8,0))
         viewer._dock_tab_buttons={}
-        actions=[('ai_generated','AI 생성 판단',lambda:viewer.select_dock('AI 생성 판단')),
-                 ('shield','성인 필터',lambda:viewer.select_dock('성인 필터')),
+        actions=[('ai_generated','AI 생성 판단',viewer.provenance_dialog),
+                 ('shield','성인 필터',viewer.adult_filter_dialog),
                  ('ocr_region','영역 글자인식',viewer.ocr_region),
                  ('index','정보 색인 · 촬영일과 OCR 함께 등록',viewer.index_all)]
         for icon,label,command in actions:
@@ -2694,6 +2696,10 @@ class CrowEyesImageViewer(tb.Window):
             self._grid_canvas = gc
             self._grid_inner = inner
             self._list_widget = gc
+            for surface in (gc,inner):
+                surface.bind('<ButtonPress-1>',self._grid_band_start)
+                surface.bind('<B1-Motion>',self._grid_band_move)
+                surface.bind('<ButtonRelease-1>',self._grid_band_end)
             return
 
         tv = ttk.Treeview(
@@ -2710,6 +2716,46 @@ class CrowEyesImageViewer(tb.Window):
         tv.bind("<Button-3>", self.show_playlist_context_menu)
         self._list_widget = tv
         self._register_playlist_drag_source(tv)
+
+    def _grid_band_point(self,event):
+        gc=self._grid_canvas
+        return gc.canvasx(event.x_root-gc.winfo_rootx()),gc.canvasy(event.y_root-gc.winfo_rooty())
+
+    def _grid_band_start(self,event):
+        self._band_start=self._grid_band_point(event)
+        self._band_base=set(self._playlist_selection) if event.state & 4 else set()
+        self._grid_canvas.delete('selection_band')
+        self._band_item=self._grid_canvas.create_rectangle(*self._band_start,*self._band_start,
+            outline='#32B9FF',width=2,dash=(4,2),tags='selection_band')
+        return 'break'
+
+    def _grid_band_move(self,event):
+        if getattr(self,'_band_start',None) is None:return
+        gc=self._grid_canvas
+        # Scroll when a rubber band reaches the viewport edge.
+        y=event.y_root-gc.winfo_rooty()
+        if y<8:gc.yview_scroll(-1,'units')
+        elif y>gc.winfo_height()-8:gc.yview_scroll(1,'units')
+        x,y=self._grid_band_point(event);sx,sy=self._band_start
+        left,right=sorted((x,sx));top,bottom=sorted((y,sy))
+        gc.coords(self._band_item,left,top,right,bottom)
+        selected=set(self._band_base)
+        for index,label in self._icon_cells.items():
+            lx=gc.canvasx(label.winfo_rootx()-gc.winfo_rootx())
+            ly=gc.canvasy(label.winfo_rooty()-gc.winfo_rooty())
+            if left<label.winfo_width()+lx and right>lx and top<label.winfo_height()+ly and bottom>ly:
+                selected.add(index)
+        self._playlist_selection=selected
+        self._highlight_icon_selection()
+        return 'break'
+
+    def _grid_band_end(self,event):
+        if getattr(self,'_band_start',None) is None:return
+        self._grid_band_move(event)
+        self._band_start=None
+        self._grid_canvas.delete('selection_band')
+        if self._playlist_selection:self._playlist_anchor=min(self._playlist_selection)
+        return 'break'
 
     def _on_icon_grid_resize(self, event, win_id) -> None:
         if self._grid_canvas is None:
@@ -3126,15 +3172,15 @@ class CrowEyesImageViewer(tb.Window):
         t = self._theme()
         for i, lbl in self._icon_cells.items():
             if i in self._playlist_selection:
-                lbl.configure(bg=t["select"], relief=tk.SOLID, bd=2)
+                lbl.configure(bg=t["select"], relief=tk.FLAT, bd=0, highlightthickness=3, highlightbackground="#32B9FF", highlightcolor="#32B9FF")
             else:
-                lbl.configure(bg=t["panel"], relief=tk.FLAT, bd=1)
+                lbl.configure(bg=t["panel"], relief=tk.FLAT, bd=0, highlightthickness=3, highlightbackground=t["panel"])
         selected_folder = str(self._selected_folder_path) if self._selected_folder_path else None
         for key, lbl in self._folder_cells.items():
             if selected_folder and key.endswith(f":{selected_folder}"):
-                lbl.configure(bg=t["select"], relief=tk.SOLID, bd=2)
+                lbl.configure(bg=t["select"], relief=tk.FLAT, bd=0, highlightthickness=3, highlightbackground="#32B9FF", highlightcolor="#32B9FF")
             else:
-                lbl.configure(bg=t["panel"], relief=tk.FLAT, bd=1)
+                lbl.configure(bg=t["panel"], relief=tk.FLAT, bd=0, highlightthickness=3, highlightbackground=t["panel"])
 
     def _queue_thumbs_priority(self) -> None:
         """Queue only current neighbours and visible rows; never flood a NAS."""
@@ -3680,8 +3726,9 @@ class CrowEyesImageViewer(tb.Window):
         if getattr(self,'_breadcrumb_stamp',None)==stamp and hasattr(self,'_breadcrumb_canvas') and self._breadcrumb_canvas.winfo_exists():return
         self._breadcrumb_stamp=stamp
         if not hasattr(self,'_breadcrumb_canvas') or not self._breadcrumb_canvas.winfo_exists():
-            self._breadcrumb_overflow=ttk.Menubutton(frame,text='…',width=2,style='Chrome.TMenubutton')
-            self._breadcrumb_overflow.pack(side='left',padx=(0,3))
+            self._breadcrumb_overflow=tk.Label(frame,text='…',width=2,bg=self._theme()['toolbar'],fg=self._theme()['fg'],cursor='hand2')
+            self._breadcrumb_overflow.tk.call(self._breadcrumb_overflow._w,'configure','-background',self._theme()['toolbar'],'-foreground',self._theme()['fg'])
+            self._breadcrumb_overflow.pack(side='right',padx=(3,0))
             ToolTip(self._breadcrumb_overflow,'컴퓨터와 상위 폴더 선택 · 긴 경로에서는 메뉴 또는 휠 사용')
             self._breadcrumb_canvas=tk.Canvas(frame,height=32,highlightthickness=0,bg=self._theme()['toolbar'])
             self._breadcrumb_canvas.pack(fill='x',expand=True)
@@ -3695,15 +3742,25 @@ class CrowEyesImageViewer(tb.Window):
             self._breadcrumb_links.bind('<Configure>',layout)
             self._breadcrumb_canvas.bind('<MouseWheel>',lambda e:self._breadcrumb_canvas.xview_scroll(-2 if e.delta>0 else 2,'units'))
         links=self._breadcrumb_links
+        for old in getattr(self,'_breadcrumb_targets',[]):
+            if old.winfo_exists():old.destroy()
         for child in links.winfo_children():child.destroy()
         self._breadcrumb_targets=[]
         if hasattr(self,'_breadcrumb_menu'):self._breadcrumb_menu.destroy()
         self._breadcrumb_menu=tk.Menu(self,tearoff=False)
-        self._breadcrumb_overflow.configure(menu=self._breadcrumb_menu)
+        self._breadcrumb_overflow.bind('<Button-1>',lambda e:self._breadcrumb_menu.tk_popup(e.x_root,e.y_root))
         def link(text,target):
-            button=ttk.Button(links,text=text,style='Chrome.TButton',command=self.navigate_to_computer if target is None else lambda p=target:self._navigate_playlist_folder(p))
-            button.pack(side='left')
+            command=self.navigate_to_computer if target is None else lambda p=target:self._navigate_playlist_folder(p)
+            button=tk.Label(frame if target is None else links,text=text if target is not None else '',image=self._icons['computer'] if target is None else '',
+                            bg=self._theme()['toolbar'],fg=self._theme()['fg'],bd=0,padx=4,pady=3,cursor='hand2',font=('Segoe UI',10))
+            button.tk.call(button._w,'configure','-background',self._theme()['toolbar'],'-foreground',self._theme()['fg'])
+            if target is None:button.pack(side='left',before=self._breadcrumb_canvas)
+            else:button.pack(side='left')
             button._croweyes_target=target
+            button._croweyes_command=command
+            button.bind('<Button-1>',lambda e:command())
+            button.bind('<Enter>',lambda e:button.configure(font=('Segoe UI',10,'underline')))
+            button.bind('<Leave>',lambda e:button.configure(font=('Segoe UI',10)))
             self._breadcrumb_menu.add_command(label='컴퓨터' if target is None else str(target),command=self.navigate_to_computer if target is None else lambda p=target:self._navigate_playlist_folder(p))
             button.bind('<MouseWheel>',lambda e:(self._breadcrumb_canvas.xview_scroll(-2 if e.delta>0 else 2,'units'),'break')[-1])
             self._breadcrumb_targets.append(button)
@@ -3986,9 +4043,11 @@ class CrowEyesImageViewer(tb.Window):
             self._region_start = (event.x, event.y)
             if self._region_rect is not None:
                 self.canvas.delete(self._region_rect)
+            self.canvas.delete('region_outline')
+            self.canvas.create_rectangle(event.x,event.y,event.x,event.y,outline='#101820',width=7,tags=('region_outline',))
             self._region_rect = self.canvas.create_rectangle(
                 event.x, event.y, event.x, event.y,
-                outline=self._theme()["accent_hi"], width=2, dash=(5, 3),
+                outline="#FFD84A", width=3, dash=(8, 3),
                 tags=("region_selection",),
             )
             return "break"
@@ -4000,6 +4059,7 @@ class CrowEyesImageViewer(tb.Window):
             x0, y0 = self._region_start
             if self._region_rect is not None:
                 self.canvas.coords(self._region_rect, x0, y0, event.x, event.y)
+                self.canvas.coords("region_outline", x0, y0, event.x, event.y)
             return "break"
         if self.pan_start is None:
             return
@@ -4140,11 +4200,16 @@ class CrowEyesImageViewer(tb.Window):
         self._region_action = action
         self._region_copy_mode = True
         self._region_start = None
-        self.canvas.configure(cursor="crosshair")
+        cursor="crosshair"
+        if action=='ocr':
+            cursor=('@'+str(resource_path('assets','cursors','region-ocr.cur')),)
+        try:self.canvas.configure(cursor=cursor)
+        except tk.TclError:self.canvas.configure(cursor='crosshair')
         self.status.configure(text="영역을 이미지 위에서 드래그하세요 · Esc 취소")
 
     def _cancel_region_copy(self) -> None:
         self._region_copy_mode = False
+        self.canvas.delete("region_outline")
         self._region_start = None
         if self._region_rect is not None:
             self.canvas.delete(self._region_rect)
@@ -4490,7 +4555,7 @@ class CrowEyesImageViewer(tb.Window):
         style.configure("Viewer.TFrame", background=t["canvas_bg"], bordercolor=t["border"],
                         borderwidth=1, relief="solid")
         style.configure("TLabel", background=t["bg"], foreground=t["fg"], font=t["font"])
-        style.configure("Brand.TLabel", background=t["toolbar"], foreground=t["fg"], font=("Segoe UI", 23, "bold"))
+        style.configure("Brand.TLabel", background=t["toolbar"], foreground=t["fg"], font=("Segoe UI", 22, "bold"))
         style.configure("Logo.TLabel", background=t["toolbar"], foreground=t["accent"], font=("Segoe UI", 17, "bold"))
         style.configure("Product.TLabel", background=t["toolbar"], foreground=t["muted"], font=("Segoe UI Semibold", 8))
         style.configure("Crumb.TLabel", background=t["toolbar"], foreground=t["muted"], font=("Segoe UI", 8))

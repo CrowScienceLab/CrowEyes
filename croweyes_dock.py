@@ -140,27 +140,58 @@ class DockMixin:
         self._sync_dock_buttons()
 
     def _window(self,title,size=None):
-        ai=any(word in title for word in ('출처','C2PA'))
-        tools=any(word in title for word in ('글자','OCR','색인','촬영 정보','검색'))
-        if hasattr(self,'_dock_tasks') and (ai or tools):
-            name='AI 생성 판단' if ai else '도구';self._activate_dock(name)
-            host=self._dock_tasks[name]
-            # Keep active progress widgets alive until their worker finishes.
-            for child in host.winfo_children():
-                if getattr(child,'_running',False):
-                    child._close();child.pack_forget()
-                else:child.destroy()
-            surface=DockSurface(host,title,self)
-            return surface,surface.body
+        if any(word in title for word in ('출처','C2PA','글자','OCR','색인','촬영 정보','검색')):
+            from croweyes_dialogs import FittedDialog
+            win=FittedDialog(self,title,540)
+            return win,win.body
         return super()._window(title,size)
 
     def _text(self,title,text):
-        if hasattr(self,'_dock_tasks') and any(word in title for word in ('출처','C2PA','글자','OCR','색인','검색','촬영 정보')):
+        if any(word in title for word in ('출처','C2PA','글자','OCR','색인','검색','촬영 정보')):
             win,frame=self._window(title)
-            view=tk.Text(frame,width=26,height=10,wrap='word',relief='flat',bg=self._theme()['panel'],fg=self._theme()['fg'])
-            scroll=ttk.Scrollbar(frame,command=view.yview);scroll.pack(side='right',fill='y')
-            view.configure(yscrollcommand=scroll.set);view.pack(fill='both',expand=True)
-            view.insert('1.0',text);view.configure(state='disabled')
-            ttk.Button(win,text='전체 복사',command=lambda:(self.clipboard_clear(),self.clipboard_append(text))).pack(pady=6)
+            if '색인' in title or '출처' in title or 'C2PA' in title:
+                # Results have a content-sized card; no copy button or scrollbar.
+                import textwrap
+                lines=[]
+                for line in str(text).splitlines():
+                    lines.extend(textwrap.wrap(line,52,replace_whitespace=False,drop_whitespace=False) or [''])
+                pages=['\n'.join(lines[i:i+8]) for i in range(0,len(lines),8)] or ['']
+                label=ttk.Label(frame,text=pages[0],wraplength=480,justify='left')
+                label.pack(fill='x',pady=8)
+                if len(pages)>1:
+                    row=ttk.Frame(frame);row.pack(fill='x',pady=6)
+                    number=ttk.Label(row);number.pack(side='left',expand=True)
+                    state=[0]
+                    def show(delta):
+                        state[0]=max(0,min(len(pages)-1,state[0]+delta))
+                        label.configure(text=pages[state[0]])
+                        number.configure(text=f'{state[0]+1} / {len(pages)}')
+                        prev.configure(state='disabled' if state[0]==0 else 'normal')
+                        nxt.configure(state='disabled' if state[0]==len(pages)-1 else 'normal')
+                    prev=ttk.Button(row,text='이전',command=lambda:show(-1));prev.pack(side='left',padx=3)
+                    nxt=ttk.Button(row,text='다음',command=lambda:show(1));nxt.pack(side='left',padx=3)
+                    show(0)
+            else:
+                view=tk.Text(frame,width=48,height=8,wrap='word',relief='flat',bg=self._theme()['panel'],fg=self._theme()['fg'])
+                scroll=ttk.Scrollbar(frame,command=view.yview)
+                view.configure(yscrollcommand=scroll.set)
+                scroll.pack(side='right',fill='y');view.pack(fill='both',expand=True)
+                view.insert('1.0',text);view.configure(state='disabled')
+                ttk.Button(frame,text='글자 복사',command=lambda:(self.clipboard_clear(),self.clipboard_append(text))).pack(pady=6)
             return win
         return super()._text(title,text)
+
+    def adult_filter_dialog(self):
+        from croweyes_dialogs import FittedDialog
+        win=FittedDialog(self,'19 · 성인 콘텐츠 필터',520);frame=win.body
+        ttk.Label(frame,text='  성인 콘텐츠 보호',image=self._icons['toolbar_shield'],compound='left',style='Section.TLabel').pack(anchor='w',pady=(0,8))
+        ttk.Label(frame,text='사진을 PC 안에서 검사합니다. 필터를 켜면 성인 콘텐츠와 판별할 수 없는 파일을 가립니다. 모델은 켤 때만 불러옵니다. 판별 결과가 항상 정확하지는 않습니다.',wraplength=460,justify='left').pack(fill='x',pady=8)
+        enabled=tk.BooleanVar(value=self._content_filter_mode=='explicit')
+        options=ttk.Frame(frame);options.pack(fill='x',pady=10)
+        ttk.Radiobutton(options,text='ON · 보호 켜기',variable=enabled,value=True).pack(side='left',padx=12)
+        ttk.Radiobutton(options,text='OFF · 보호 끄기',variable=enabled,value=False).pack(side='left',padx=12)
+        def apply():
+            self._set_content_filter('explicit' if enabled.get() else 'off')
+            win.destroy()
+        ttk.Button(frame,text='적용',style='Accent.TButton',command=apply).pack(anchor='e',pady=6)
+        return win

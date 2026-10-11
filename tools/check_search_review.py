@@ -18,10 +18,10 @@ def pump(ms=160):
 pump(1200)
 assert [b._croweyes_action for b in v._navigation_tasks.winfo_children()]==['ai_generated','shield','ocr_region','index']
 assert '정보' not in v._dock_tab_buttons and '도구' not in v._dock_tab_buttons
-assert v._breadcrumb_targets[0].cget('text')=='컴퓨터'
+assert v._breadcrumb_targets[0].cget('image')
 assert [b._croweyes_target for b in v._breadcrumb_targets[1:]]==list(reversed((folder,*folder.parents)))
 with patch.object(v,'_navigate_playlist_folder') as navigate:
-    v._breadcrumb_targets[-2].invoke();navigate.assert_called_once_with(folder.parent)
+    v._breadcrumb_targets[-2]._croweyes_command();navigate.assert_called_once_with(folder.parent)
 def click(i,state=0):
     cell=v._icon_cells[i]
     cell.event_generate('<ButtonPress-1>',x=20,y=20,state=state)
@@ -58,7 +58,7 @@ target=v.folder_files[0]
 v._playlist_selection={0}
 with patch('croweyes_tools_ui.messagebox.askyesno',return_value=True):
     v.delete_index_dialog();pump()
-    surface=v._dock_tasks['도구'].winfo_children()[-1]
+    surface=next(w for w in v.winfo_children() if w.__class__.__name__=='FittedDialog' and any(c.__class__.__name__=='Radiobutton' for c in w.body.winfo_children()))
     options=[w for w in surface.body.winfo_children() if w.__class__.__name__=='Radiobutton']
     next(w for w in options if w.cget('value')=='selected').invoke()
     next(w for w in surface.body.winfo_children() if w.__class__.__name__=='Button').invoke();pump()
