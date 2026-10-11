@@ -17,7 +17,7 @@ def pump(ms=180):
  while time.monotonic()<end:v.update();time.sleep(.01)
 pump(1000)
 assert len(v.paned.panes())==2
-assert '21' in str(m.ttk.Style(v).lookup('Brand.TLabel','font'))
+assert '20' in str(m.ttk.Style(v).lookup('Brand.TLabel','font'))
 for w in v._breadcrumb_targets:
  assert int(w.cget('borderwidth'))==0 and w.cget('bg')==v._theme()['toolbar'],(w.cget('borderwidth'),w.cget('bg'),v._theme()['toolbar'])
 w=v._breadcrumb_targets[-1];w.event_generate('<Enter>');pump();assert 'underline' in str(w.cget('font'))
@@ -81,7 +81,7 @@ for method in (v.adult_filter_dialog,lambda:v._text('정보 색인 결과','등�
  assert win.winfo_reqheight()<=win.winfo_height();win.destroy()
 assert not errors,errors
 v._on_close()
-print('PASS: plain breadcrumb hover, 21 regular brand, print order, immediate AI inspection, internal adult/OCR/index cards, native custom OCR cursor, high contrast selection, actual drag rectangle multi-selection, 800x600 fit')
+print('PASS: plain breadcrumb hover, 20 bold outlined brand, print order, immediate AI inspection, internal adult/OCR/index cards, native custom OCR cursor, high contrast selection, actual drag rectangle multi-selection, 800x600 fit')
 
 
 

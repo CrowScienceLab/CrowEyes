@@ -1,100 +1,31 @@
 # CrowEyes Image Viewer
 
-CrowEyes 2.0.0은 빠른 기본 뷰어와 요청 시 실행하는 편집·사진 관리 도구를 제공합니다. 제작자는 Crow Science Lab입니다. 현재 2.0은 로컬 검토본이며 공개 다운로드에는 이전 릴리스가 표시될 수 있습니다.
+CrowEyes 2.0.0은 빠른 이미지 보기와 요청 시 실행하는 편집·사진 관리 기능을 제공합니다. 제작자는 Crow Science Lab입니다. 최종 패키지 생성과 로컬 검증을 완료했으며 GitHub·Microsoft Store 게시 직전 상태입니다.
 
-## 2.0 기능과 공통 버전
+## 2.0 화면과 기능
 
-[최신 실행 확인본](docs/PREVIEW_INLINE_V2.md), [2.0 빌드 안내](docs/BUILD_V2.md). 현재 편집 화면은 뷰어의 왼쪽 파일목록을 그대로 사용합니다. 편집 아이콘은 상단에 표시하고 사진 위에서 주석·형광펜·모자이크를 직접 적용합니다. 썸네일은 가운데를 잘라 둥근 정사각형 영역을 채웁니다. 이번 변경은 실행 확인본만 만들었으며 기존 Setup/Portable/Store 패키지는 이전 UI입니다.
+뷰어·편집은 같은 파일목록과 이미지 화면을 공유합니다. 상단 컬러 아이콘과 모드 스위치, 클릭 가능한 컴퓨터·드라이브·폴더 경로, 이전·다음·상위·새로고침, 정사각형 썸네일, Ctrl/Shift/드래그 선택을 제공합니다. Blue/Pink 테마의 상단 배경을 통일하고 메뉴의 관련 기능을 구분선으로 묶었습니다. 주석·형광펜·모자이크·비교는 편집 메뉴에서 별도 그룹입니다.
 
-C2PA·성인 콘텐츠 필터·RAW 미리보기는 기본 배포에 포함하며, 검사 요청·필터 켜기·RAW 열기 시에만 라이브러리와 모델을 로드합니다. AI 내용 검색과 별점·태그·즐겨찾기 기능은 제거했습니다. 촬영일·OCR 글자 검색은 유지합니다. C2PA 기록 없음은 AI 여부를 판별할 수 없다는 뜻입니다.
+영역 저장·클립보드 복사, 크기·비율 변경, 회전·반전·밝기·대비, 실행 취소·재실행, 일괄 변환·이름 변경, 이미지 비교, 인쇄, 품질·목표 용량 저장, EXIF/GPS·ICC, 정확/유사 중복 검색을 지원합니다. 영역 OCR과 촬영일·OCR 정보 색인/검색은 앱 내부 보조 창에서 실행합니다. 색인은 로컬 catalog.sqlite3에 저장하며 색인 삭제 메뉴를 제공합니다.
 
-`version.json`의 2.0.0이 기준입니다. GitHub 태그 v2.0.0, Store 2.0.0.0을 사용하고 다음 패치는 모두 2.0.1 / v2.0.1 / 2.0.1.0으로 함께 올립니다. 문자 접미사 버전은 다시 사용하지 않습니다. 아래 1.9e 내용은 이전 공개 릴리스 기록입니다.
+C2PA 출처·성인 콘텐츠 필터·RAW 미리보기는 기본 포함하되 사용 시에만 라이브러리와 모델을 로드합니다. 성인 필터는 기본 꺼짐이며 이미지/판정 결과를 외부로 전송하지 않습니다. C2PA 기록 없음은 AI 여부를 판별할 수 없다는 뜻입니다. AI 내용검색·별점·태그·즐겨찾기는 포함하지 않습니다.
 
-## 1.9e 주요 변경
+## 공통 버전과 패키지
 
-[변경 내역](RELEASE_NOTES_v1.9e.md). **더보기** 또는 이미지 우클릭 메뉴에서 영역 저장·복사와 크기·비율 변경을 사용할 수 있습니다. 상단은 36px 아이콘과 한글 기능명으로 표시하며 창 크기에 따라 자동 줄바꿈합니다.
+version.json을 기준으로 앱/설치형/Portable 2.0.0, GitHub 태그 v2.0.0, Microsoft Store 2.0.0.0을 사용합니다. 다음 패치는 2.0.1 / v2.0.1 / 2.0.1.0으로 함께 변경합니다. 문자 접미사를 사용하지 않습니다.
 
-## 다운로드
+release/review-v2.0.0에 Setup EXE, Portable ZIP, Store MSIX와 SHA256SUMS.txt가 있습니다. 이전 1.9e는 release/v1.9e 및 dist/v1.9e에 보존합니다. [최종 검증 및 정리](docs/FINAL_RELEASE_V2.md), [빌드 안내](docs/BUILD_V2.md), [변경 내역](RELEASE_NOTES_v2.0.0.md)를 참조하십시오.
 
-[GitHub 최신 릴리스](https://github.com/CrowScienceLab/CrowEyes/releases/latest)에서 용도에 맞는 파일을 받습니다. [Microsoft Store](https://apps.microsoft.com/detail/9NNHX36VPSQZ)에서도 사용할 수 있으며 Store 업데이트는 Microsoft 인증 후 반영됩니다.
+게시 이후 [GitHub 최신 릴리스](https://github.com/CrowScienceLab/CrowEyes/releases/latest)와 [Microsoft Store](https://apps.microsoft.com/detail/9NNHX36VPSQZ)에서 배포합니다. 현재 공개 릴리스는 로컬 최종 패키지와 다를 수 있습니다.
 
-2026-10-06 업데이트 호환 패치: 제품 표시 버전은 **1.9e**, GitHub 업데이트 태그는 **v1.9.1**입니다. 기존 1.9의 비교기가 문자 접미사를 무시해 1.9e를 같은 버전으로 판단하던 문제를 숫자 태그로 해결했습니다. 패치 프로그램도 숫자 업데이트 버전 1.9.1을 사용하므로 설치 후 같은 업데이트를 반복 안내하지 않습니다. 시작 시 새 버전을 안내하며, 사용자가 동의하면 다운로드·검증 후 설치를 진행합니다. Portable은 검증된 ZIP을 직접 교체합니다.
+## 첫 실행과 업데이트
 
-- 설치형: `CrowEyes_Setup_1.9e_Windows_x64.exe`
-- 무설치형: `CrowEyes_Portable_1.9e_Windows_x64.zip`
-- 무결성 값: `SHA256SUMS.txt`
+새 설치는 시작 시 백그라운드로 최신 버전을 확인합니다. 기존 설정에서 끈 경우는 선택을 유지합니다. 새 버전 설치는 사용자 동의와 SHA-256 확인을 거치며 Store 설치형은 Store 업데이트로 연결합니다. 숫자 버전 비교로 이전 1.9·1.9e도 v2.0.0을 새 버전으로 인식합니다.
 
-설치형은 관리자 권한이 필요 없는 사용자별 경로 `%LOCALAPPDATA%\Programs\CrowEyes`를 기본으로 사용하며 설치 위치를 바꿀 수 있습니다. Portable ZIP은 압축을 푼 뒤 `CrowEyes.exe`를 실행하면 되며 Python 설치가 필요하지 않습니다.
+첫 실행 때 지원 이미지 29종을 연결 프로그램 후보로 등록하고, 기본 앱이 없는 확장자는 자동 연결합니다. Windows 보호 UserChoice와 기존 기본 앱 선택은 변경하지 않습니다. EPS는 외부 Ghostscript가 필요하며 자동 연결에서 제외합니다. 첫 등록 완료를 설정에 기록해 반복 등록을 방지합니다.
 
-## 1.9 주요 기능
+## 사용 범위와 개인정보
 
-- Crow 제품군과 통일된 새 앱 아이콘 및 24px 기능 아이콘
-- C2PA 선언에 따른 AI 출처 근거 표시(통계적 확률 아님)
-- White + Light Pink 테마 추가, Black 테마 기본값 유지
-- Image Info의 중복 파일명·전체 경로 제거
-- 성인용 컨텐츠 차단 문구로 정비
+RAW는 내장 미리보기이며 현상 도구가 아닙니다. HEIC/HEIF는 Windows 코덱에 의존합니다. 고해상도 보기에서 저장은 표시 미리보기 픽셀 기준이고 일괄 변환은 원본을 읽습니다. 성인 필터에는 오탐·미탐이 있을 수 있습니다.
 
-- 환경설정에서 선택하는 로컬 성인용 컨텐츠 차단 기능(기본값 OFF)
-- 안전 필터 사용 중에는 판정 전 원본·썸네일을 노출하지 않고, 판정 실패도 안전하게 숨김
-- 이미지 파일이나 판정 데이터는 외부 서버/API로 전송하지 않으며 로컬 ONNX 모델만 사용
-- 차단 화면에 경량 투명 WebP 까마귀 캐릭터를 표시하고, 판정 결과는 파일 변경 시 자동 무효화되는 로컬 SQLite 캐시에 저장
-- 파일 연결로 연 이미지를 폴더 전체보다 먼저 처리하고, 썸네일 디코딩을 비동기화해 NAS·대형 폴더의 초기 응답 개선
-- 현재 이미지 주변(±1, ±2)과 보이는 목록을 우선 처리하여 다음 이미지 탐색 속도 유지
-- 파일명으로만 보기 클릭, 창 크기 변경 시 보기 모드 유지, 첫 실행 패널 최소 폭 문제 수정
-- Windows 제목 표시줄과 실행 파일 아이콘을 CrowEyes 까마귀 눈 디자인으로 통일
-
-- 상단 CrowEyes Command Bar와 `내 컴퓨터 > 드라이브 > 폴더` 전체가 클릭되는 Breadcrumb, 새로고침, 실시간 검색
-- 이미지 화면 좌우의 이전·다음 버튼과 3초 기본 간격의 재생/정지가 확실한 슬라이드쇼
-- 플레이리스트에서 드라이브·바탕 화면·문서·사진·다운로드 등 Windows 사용자 폴더로 직접 이동
-- 모든 플레이리스트 보기 방식에서 폴더·드라이브 한 번 클릭 이동, 패널 닫기 버튼과 간결한 헤더
-- 크기가 변하지 않는 고정형 아이콘 호버 글로우와 검정 기본 테마
-- PLAYLIST 파일 수·보기·정렬 상태 표시, 폴더 이동, Ctrl/Shift 다중 선택, Explorer drag-out
-- Windows 파일 클립보드 복사, F2 이름 변경, 휴지통 삭제, 파일 위치 열기
-- PNG/JPEG/WebP/BMP/TIFF raster 저장(JPEG 투명 영역은 흰색 합성)
-- JPG, PNG, GIF, WebP, BMP, TIFF, ICO, PSD, SVG 표시와 실제 PSD 합성 썸네일
-- 실제 SVG의 px/mm/cm/pt/in/viewBox·UTF-8 BOM·UTF-16 처리와 안전한 크기 fallback
-- CrowEyes 인쇄 미리보기 안에서 프린터·방향·용지·매수·파일 출력을 설정하고 중복 Windows 미리보기 없이 직접 인쇄
-- GitHub Releases 기반 수동/프로그램 시작 시 자동 업데이트 확인, 사용자 승인, 진행률, SHA-256 검증
-- CrowEyes Dark와 Bright Sky Blue 테마, 슬라이드쇼, 애니메이션, 확대/회전/반전/밝기/대비
-
-AI 파일은 지원하지 않습니다. EPS는 Ghostscript가 이미 설치된 PC에서만 선택 지원하며 배포본에 Ghostscript를 포함하지 않습니다.
-
-## 콘텐츠 안전 및 개인정보
-
-`환경설정 > 콘텐츠 안전`에서 `노골적인 노출 이미지 차단`을 선택할 수 있습니다. 새 설치와 업그레이드 모두 기본값은 OFF입니다. ON일 때만 ONNX Runtime과 약 12MB 모델을 지연 로드합니다. 이미지·경로·판정 결과를 인터넷으로 전송하지 않으며, 캐시는 `%LOCALAPPDATA%\CrowEyes`에 저장되고 환경설정에서 지울 수 있습니다. 분류기는 완벽하지 않아 오탐·미탐이 가능하며 의료·법률 판단 도구가 아닙니다.
-
-모델과 런타임의 출처·라이선스·해시는 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)에 정리되어 있습니다.
-
-## Windows 실행 차단 안내
-
-CrowEyes는 무료로 배포되는 무서명 프로그램입니다. 일부 Windows 11 PC에서는 Smart App Control 또는 Microsoft Defender SmartScreen이 실행을 막을 수 있습니다.
-
-- 반드시 [CrowEyes 공식 GitHub Releases](https://github.com/CrowScienceLab/CrowEyes/releases)에서 내려받고 `SHA256SUMS.txt`로 파일을 확인하십시오.
-- SmartScreen에서 `추가 정보 → 실행`이 제공되는 경우에는 출처와 SHA-256을 확인한 사용자가 직접 실행 여부를 판단합니다.
-- Smart App Control은 특정 앱만 예외 처리할 수 없습니다. 삭제 후 재설치해도 해결되지 않으며 PC 전체 보안 기능을 끄는 방법은 권장하지 않습니다.
-- 회사·학교 관리 PC에서는 보안 설정을 변경하지 말고 관리자에게 문의하십시오.
-
-자세한 내용은 [WINDOWS_SECURITY.md](WINDOWS_SECURITY.md)와 [Microsoft Smart App Control FAQ](https://support.microsoft.com/en-us/Windows/Security/threat-malware-protection/smart-app-control-frequently-asked-questions)를 참고하십시오.
-
-## 기본 앱 등록
-
-설치 프로그램과 앱의 `더 보기 > 기본 앱 등록`은 CrowEyes를 지원 이미지의 “연결 프로그램” 후보로 등록합니다. Windows 정책상 기존 기본 앱을 강제로 변경하지 않으며, 최종 선택은 Windows 기본 앱 설정에서 사용자가 합니다. EPS는 기본 등록 대상에서 제외됩니다.
-
-## 업데이트
-
-CrowEyes는 프로그램을 시작할 때 GitHub의 최신 공개 릴리스를 백그라운드에서 확인하며, `더 보기 > 업데이트 확인`으로 수동 확인할 수도 있습니다. 새 릴리스가 있으면 먼저 사용자 승인을 받습니다. 일반 설치형은 Setup 또는 Portable ZIP과 `SHA256SUMS.txt`를 내려받아 SHA-256이 일치할 때만 다음 단계로 진행하고, Microsoft Store 설치형은 Store 업데이트 페이지를 엽니다. 설정은 사용자 홈의 `.croweyes_image_viewer.json`에 저장되어 업그레이드 설치로 초기화되지 않습니다.
-
-## 소스 실행과 빌드
-
-Python 3.10 이상에서 다음을 실행합니다.
-
-```bat
-python -m pip install -r requirements.txt
-python CrowEyes_Image_Viewer_1.9e.py
-```
-
-검사·PyInstaller·Inno Setup 빌드 방법은 [BUILD.md](BUILD.md)를 참고하십시오.
-
-## 저작권
-
-Copyright 2026 Crow Science Lab. All rights reserved. 별도의 오픈 소스 라이선스는 부여되지 않습니다.
+[개인정보](PRIVACY.md), [외부 구성요소와 라이선스](THIRD_PARTY_NOTICES.md), [Windows 실행 안내](WINDOWS_SECURITY.md). 사용자 설정과 로컬 색인/캐시는 설치 폴더 외부에 저장되며 이번 자료 정리에서 삭제하지 않았습니다.

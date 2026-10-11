@@ -117,7 +117,7 @@ class DockMixin:
         for text,command in commands:ttk.Button(tools,text=text,command=command).pack(fill='x',pady=3,before=self._dock_tasks['도구'])
     def _sync_dock_buttons(self):
         for name,button in getattr(self,'_dock_tab_buttons',{}).items():
-            button.configure(style='Accent.Icon.Tool.TButton' if self._info_visible and name==self._dock_page else 'Icon.Tool.TButton')
+            button.tk.call(button._w,'configure','-style','Accent.Icon.Tool.TButton' if self._info_visible and name==self._dock_page else 'Icon.Tool.TButton')
 
     def hide_info_panel(self):
         super().hide_info_panel()

@@ -26,7 +26,7 @@ class WorkspaceToolbar(ttk.Frame):
         heading.pack(side=tk.LEFT,padx=(0,12))
         viewer._brand_logo_label=ttk.Label(heading,image=viewer._icons['eye'],style='Logo.TLabel')
         viewer._brand_logo_label.pack(side=tk.LEFT,padx=(0,8))
-        viewer._brand_label=ttk.Label(heading,text='CrowEyes',style='Brand.TLabel')
+        viewer._brand_label=ttk.Label(heading,text='CrowEyes',image=viewer._icons['brand_wordmark'],compound=tk.NONE,style='Brand.TLabel')
         viewer._brand_label.pack(side=tk.LEFT,padx=(0,24))
         self.mode_switch=ModeSwitch(heading,viewer)
         self.mode_switch.pack(side=tk.LEFT,padx=4)
@@ -60,9 +60,25 @@ class WorkspaceToolbar(ttk.Frame):
         m.add_checkbutton(label='사진 정보 패널',variable=v._info_panel_var,command=v.toggle_info_panel)
         m=menu('편집')
         add(m,'편집 작업 공간',lambda:v.set_workspace('editor'))
-        for label,cmd,key in [('실행 취소',v.undo_edit,'Ctrl+Z'),('재실행',v.redo_edit,'Ctrl+Y'),('원본 복원',v.restore_original,''),('오른쪽 회전',lambda:v.rotate(90),'Ctrl+R'),('왼쪽 회전',lambda:v.rotate(-90),'Ctrl+L'),('좌우 반전',v.toggle_flip_h,''),('상하 반전',v.toggle_flip_v,''),('크기·비율 변경 후 저장',lambda:v.select_edit_tool('크기·비율'),''),('영역 선택 후 복사',v.start_region_copy,''),('영역 선택 후 저장',lambda:v.start_region_copy('save'),''),('주석',v.annotation_dialog,''),('형광펜',lambda:v.select_edit_tool('형광펜'),''),('모자이크',lambda:v.select_edit_tool('모자이크'),''),('편집 전후 비교',v.compare_before_after,'')]:add(m,label,cmd,key)
+        groups=[
+            [('실행 취소',v.undo_edit,'Ctrl+Z'),('재실행',v.redo_edit,'Ctrl+Y'),('원본 복원',v.restore_original,'')],
+            [('오른쪽 회전',lambda:v.rotate(90),'Ctrl+R'),('왼쪽 회전',lambda:v.rotate(-90),'Ctrl+L'),('좌우 반전',v.toggle_flip_h,''),('상하 반전',v.toggle_flip_v,'')],
+            [('크기·비율 변경 후 저장',lambda:v.select_edit_tool('크기·비율'),''),('영역 선택 후 복사',v.start_region_copy,''),('영역 선택 후 저장',lambda:v.start_region_copy('save'),'')],
+            [('주석',v.annotation_dialog,''),('형광펜',lambda:v.select_edit_tool('형광펜'),''),('모자이크',lambda:v.select_edit_tool('모자이크'),''),('편집 전후 비교',v.compare_before_after,'')],
+        ]
+        for group in groups:
+            m.add_separator()
+            for label,cmd,key in group:add(m,label,cmd,key)
         m=menu('정리')
-        for label,cmd in [('파일(OCR) 찾기',v.search_dialog),('검색 색인 삭제',v.delete_index_dialog),('이름 변경',v.rename_selected_file),('일괄 이름 변경',v.rename_batch_dialog),('일괄 변환·크기·이름 변경',v.batch_dialog),('동일 파일 찾기',lambda:v.duplicate_dialog(False)),('유사 이미지 찾기',lambda:v.duplicate_dialog(True)),('선택 파일 복사',v.copy_selected_files),('휴지통으로 삭제',v.delete_selected_files),('파일 위치 열기',v.open_selected_file_location)]:add(m,label,cmd)
+        groups=[
+            [('파일(OCR) 찾기',v.search_dialog),('검색 색인 삭제',v.delete_index_dialog)],
+            [('이름 변경',v.rename_selected_file),('일괄 이름 변경',v.rename_batch_dialog),('일괄 변환·크기·이름 변경',v.batch_dialog)],
+            [('동일 파일 찾기',lambda:v.duplicate_dialog(False)),('유사 이미지 찾기',lambda:v.duplicate_dialog(True))],
+            [('파일 위치 열기',v.open_selected_file_location),('선택 파일 복사',v.copy_selected_files),('휴지통으로 삭제',v.delete_selected_files)],
+        ]
+        for index,group in enumerate(groups):
+            if index:m.add_separator()
+            for label,cmd in group:add(m,label,cmd)
         m.add_separator()
         for name in c.SORT_KEYS:
             m.add_radiobutton(label=c.SORT_LABELS[name],variable=v._sort_var,value=name,command=lambda n=name:v.set_sort(n))
@@ -153,6 +169,17 @@ class WorkspaceMixin(DockMixin,InlineEditorMixin):
 
     def _apply_theme(self):
         super()._apply_theme()
+        def chrome(widget,frame_style,label_style):
+            if isinstance(widget,ttk.Frame):widget.tk.call(widget._w,'configure','-style',frame_style)
+            elif isinstance(widget,ttk.Label):widget.tk.call(widget._w,'configure','-style',label_style)
+            elif isinstance(widget,ttk.Button) and hasattr(widget,'_croweyes_style'):
+                widget.tk.call(widget._w,'configure','-style',widget._croweyes_style)
+            for child in widget.winfo_children():chrome(child,frame_style,label_style)
+        chrome(self.toolbar,'Toolbar.TFrame','Logo.TLabel')
+        chrome(self.navigation_bar,'Chrome.TFrame','Chrome.TLabel')
+        self._top_search.tk.call(self._top_search._w,'configure','-style','Search.TEntry')
+        if hasattr(self,'_breadcrumb_canvas') and self._breadcrumb_canvas.winfo_exists():
+            self._breadcrumb_canvas.tk.call(self._breadcrumb_canvas._w,'configure','-background',self._theme()['toolbar'])
         self._brand_label.tk.call(self._brand_label._w,'configure','-style','Brand.TLabel')
         self._brand_logo_label.tk.call(self._brand_logo_label._w,'configure','-style','Logo.TLabel')
         if hasattr(self.toolbar,'mode_switch'):self.toolbar.mode_switch.redraw()

@@ -11,7 +11,9 @@ for i in range(8):Image.new('RGB',(500,350),(42,91,146)).save(folder/f'{i}.png')
 spec=importlib.util.spec_from_file_location('ui_finish',ROOT/'CrowEyes_Image_Viewer_2.0.py')
 m=importlib.util.module_from_spec(spec);sys.modules[spec.name]=m;spec.loader.exec_module(m)
 m.load_settings=lambda:{**m.DEFAULT_SETTINGS,'auto_check_updates':False,'association_extensions':[],'window_geometry':'1280x850'}
-m.save_settings=lambda v:None;m.CrowEyes20._auto_register_file_associations=lambda s:None
+m.save_settings=lambda v:None
+auto_register_original=m.CrowEyes20._auto_register_file_associations
+m.CrowEyes20._auto_register_file_associations=lambda s:None
 v=m.CrowEyes20(str(folder/'0.png'));errors=[];v.report_callback_exception=lambda *a:errors.append(str(a))
 def pump(ms=160):
  end=time.monotonic()+ms/1000
@@ -26,7 +28,7 @@ assert [b._croweyes_action for b in v._navigation_buttons]==['previous','next','
 assert v._breadcrumb_targets[0].cget('text')=='내 컴퓨터'
 assert all(w.cget('fg')=='#79BEFF' for w in v._breadcrumb_targets)
 font=Font(root=v,font=m.ttk.Style(v).lookup('Brand.TLabel','font'))
-assert font.actual('size')==21 and font.actual('weight')=='normal'
+assert font.actual('size')==20 and font.actual('weight')=='bold'
 assert v._icons['eye'].height()==font.metrics('linespace')
 assert Font(root=v,family='Segoe UI',size=9).measure(v._short_folder_name('아주 긴 한글 폴더 이름입니다'))<=64
 v._on_motion(SimpleNamespace(x=v.canvas.winfo_width()/2,y=v.canvas.winfo_height()/2));pump()
@@ -101,6 +103,32 @@ for geometry in ('1280x850','1000x700','800x600'):
      assert w.winfo_rootx()+w.winfo_width()<=win.winfo_rootx()+win.winfo_width()+1
      assert w.winfo_rooty()+w.winfo_height()<=win.winfo_rooty()+win.winfo_height()+1
    win.destroy()
+for theme in ('bright_sky_blue','white_light_pink','croweyes_dark'):
+ v.set_ui_theme(theme);pump(180)
+ for frame in (v.toolbar,v.toolbar.buttons,v.navigation_bar,v._breadcrumb_frame,v._breadcrumb_links,v._navigation_tasks):
+  expected='Toolbar.TFrame' if frame in (v.toolbar,v.toolbar.buttons) else 'Chrome.TFrame'
+  assert str(frame.cget('style'))==expected,(str(frame),frame.cget('style'))
+  assert m.ttk.Style(v).lookup(frame.cget('style'),'background')==v._theme()['toolbar']
+ assert v._breadcrumb_canvas.cget('bg')==v._theme()['toolbar']
+ assert m.ttk.Style(v).lookup('Chrome.TLabel','background')==v._theme()['toolbar']
+ for button in v._navigation_tasks.winfo_children():
+  assert button.cget('style')=='Icon.Tool.TButton'
+ for label in v._breadcrumb_links.winfo_children():
+  if isinstance(label,m.ttk.Label):assert label.cget('style')=='Chrome.TLabel'
+menu=v._workspace_menus['편집']
+entries=[(menu.type(i),menu.entrycget(i,'label') if menu.type(i)!='separator' else '') for i in range(menu.index('end')+1)]
+start=entries.index(('command','주석'));assert entries[start-1][0]=='separator'
+assert [label for kind,label in entries[start:]]==['주석','형광펜','모자이크','편집 전후 비교']
+assert sum(kind=='separator' for kind,label in entries)==4
+assert sum(v._workspace_menus['정리'].type(i)=='separator' for i in range(v._workspace_menus['정리'].index('end')+1))==4
+assert m.DEFAULT_SETTINGS['auto_check_updates'] and m.DEFAULT_SETTINGS['auto_register_associations']
+with patch.object(v,'set_default_associations_when_unclaimed',return_value=(['.png'],['.jpg'])) as registrar:
+ v.settings['association_extensions']=['.png','.jpg']
+ auto_register_original(v)
+ registrar.assert_called_once_with(['.png','.jpg'])
+ assert v.settings['initial_associations_registered']
+from PIL import ImageTk
+ImageTk.getimage(v._icons['brand_wordmark']).save(ROOT/'tmp/brand-wordmark.png')
 assert not errors,errors
 v._on_close()
-print('PASS: real filter setter closes ON/OFF card, immediate cached OFF thumbnails, selection/scroll widgets preserved, stale safety results ignored, no-op repeat, pixel color swatch, 21 normal brand/logo height, four navigation actions, blue links, filter changes preserve active folder scan, 18 geometry/theme/mode UI bounds and one-page AI summaries')
+print('PASS: real filter setter closes ON/OFF card, immediate cached OFF thumbnails, selection/scroll widgets preserved, stale safety results ignored, no-op repeat, pixel color swatch, 20 bold outlined brand/logo height, four navigation actions, blue links, filter changes preserve active folder scan, 18 geometry/theme/mode UI bounds and one-page AI summaries')

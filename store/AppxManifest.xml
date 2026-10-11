@@ -27,17 +27,35 @@
           <uap:FileTypeAssociation Name="croweyes.image">
             <uap:DisplayName>CrowEyes Image</uap:DisplayName>
             <uap:SupportedFileTypes>
-              <uap:FileType>.jpg</uap:FileType>
-              <uap:FileType>.jpeg</uap:FileType>
-              <uap:FileType>.png</uap:FileType>
-              <uap:FileType>.gif</uap:FileType>
-              <uap:FileType>.webp</uap:FileType>
               <uap:FileType>.bmp</uap:FileType>
+              <uap:FileType>.dib</uap:FileType>
+              <uap:FileType>.gif</uap:FileType>
+              <uap:FileType>.ico</uap:FileType>
+              <uap:FileType>.jfif</uap:FileType>
+              <uap:FileType>.jpe</uap:FileType>
+              <uap:FileType>.jpeg</uap:FileType>
+              <uap:FileType>.jpg</uap:FileType>
+              <uap:FileType>.pbm</uap:FileType>
+              <uap:FileType>.pgm</uap:FileType>
+              <uap:FileType>.png</uap:FileType>
+              <uap:FileType>.ppm</uap:FileType>
+              <uap:FileType>.tga</uap:FileType>
               <uap:FileType>.tif</uap:FileType>
               <uap:FileType>.tiff</uap:FileType>
-              <uap:FileType>.ico</uap:FileType>
+              <uap:FileType>.webp</uap:FileType>
               <uap:FileType>.psd</uap:FileType>
               <uap:FileType>.svg</uap:FileType>
+              <uap:FileType>.avif</uap:FileType>
+              <uap:FileType>.heic</uap:FileType>
+              <uap:FileType>.heif</uap:FileType>
+              <uap:FileType>.cr2</uap:FileType>
+              <uap:FileType>.cr3</uap:FileType>
+              <uap:FileType>.nef</uap:FileType>
+              <uap:FileType>.arw</uap:FileType>
+              <uap:FileType>.dng</uap:FileType>
+              <uap:FileType>.raf</uap:FileType>
+              <uap:FileType>.rw2</uap:FileType>
+              <uap:FileType>.orf</uap:FileType>
             </uap:SupportedFileTypes>
           </uap:FileTypeAssociation>
         </uap:Extension>

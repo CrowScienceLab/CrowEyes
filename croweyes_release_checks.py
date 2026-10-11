@@ -121,7 +121,7 @@ def run_workspace(viewer_type,report_path):
             assert all(str(path) in before for path in viewer.folder_files)
             from tkinter.font import Font
             font=Font(root=viewer,font=module.ttk.Style(viewer).lookup('Brand.TLabel','font'))
-            assert font.actual('size')==21 and font.actual('weight')=='normal'
+            assert font.actual('size')==20 and font.actual('weight')=='bold'
             assert viewer._icons['eye'].height()==font.metrics('linespace')
             assert [b._croweyes_action for b in viewer._navigation_buttons]==['previous','next','up','refresh']
             win=viewer._text('AI 생성 판단 · C2PA','파일: photo-0.png\\nAI 기록: 판별 불가\\n출처 기록: 없음\\n검증: 확인 불가\\n출처 정보 없음은 AI가 아니라는 뜻이 아닙니다.');pump(100)
@@ -151,7 +151,7 @@ def run_workspace(viewer_type,report_path):
             assert viewer._pixel_swatch.itemcget('color','fill') in viewer.status.cget('text')
             viewer._on_close();viewer=None
             assert not errors,errors
-        results=dict(status='PASS',checks=['frozen viewer/editor','state retention','shared file list','inline highlight and undo/redo','six menus','800x600 bounds','breadcrumb links and four action icons','Ctrl/Shift grid events','no canvas resize on workspace switch','four-column default','fitted settings without scrollbars','small internal OCR/index/filter cards','native OCR cursor in frozen build','plain breadcrumb','drag selection and strong border','print icon','single status pixel display','grid scroll boundary','no heavy startup imports','real bundled filter ON/OFF closes dialog','immediate original thumbnails on OFF','one-page AI result','pixel swatch','four navigation icons','normal brand/font-matched logo'],callback_errors=errors)
+        results=dict(status='PASS',checks=['frozen viewer/editor','state retention','shared file list','inline highlight and undo/redo','six menus','800x600 bounds','breadcrumb links and four action icons','Ctrl/Shift grid events','no canvas resize on workspace switch','four-column default','fitted settings without scrollbars','small internal OCR/index/filter cards','native OCR cursor in frozen build','plain breadcrumb','drag selection and strong border','print icon','single status pixel display','grid scroll boundary','no heavy startup imports','real bundled filter ON/OFF closes dialog','immediate original thumbnails on OFF','one-page AI result','pixel swatch','four navigation icons','outlined bold brand/font-matched logo'],callback_errors=errors)
     except Exception as exc:
         import traceback
         results=dict(status='FAIL',error=str(exc),traceback=traceback.format_exc(),callback_errors=errors)

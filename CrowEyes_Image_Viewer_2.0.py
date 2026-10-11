@@ -163,6 +163,10 @@ ASSOCIATION_OPTIONS = (
     (".tga", "TGA 이미지"), (".tif", "TIFF 이미지"),
     (".tiff", "TIFF 이미지"), (".webp", "WebP 이미지"),
     (".psd", "PSD 합성 이미지"), (".svg", "SVG 벡터 이미지"),
+    (".avif", "AVIF 이미지"), (".heic", "HEIC 이미지"), (".heif", "HEIF 이미지"),
+    (".cr2", "Canon RAW"), (".cr3", "Canon RAW"), (".nef", "Nikon RAW"),
+    (".arw", "Sony RAW"), (".dng", "DNG RAW"), (".raf", "Fujifilm RAW"),
+    (".rw2", "Panasonic RAW"), (".orf", "Olympus RAW"),
 )
 OPTIONAL_ASSOCIATION_OPTIONS = ((".eps", "EPS 벡터 이미지 · Ghostscript 필요"),)
 ASSOCIATION_PROG_ID = "CrowEyes.Image"
@@ -195,7 +199,8 @@ DEFAULT_SETTINGS = {
     "print_scale_mode": "fit",
     "print_copies": 1,
     "association_extensions": [ext for ext, _description in ASSOCIATION_OPTIONS],
-    "auto_register_associations": False,
+    "auto_register_associations": True,
+    "initial_associations_registered": False,
     # Initial pane ratios: playlist / image / info
     "pane_ratio_playlist": 0.22,
     "pane_ratio_image": 0.60,
@@ -1320,7 +1325,8 @@ class CrowEyesIconSet:
             self.images[name] = self._render(name, 24)
             self.images["toolbar_" + name] = self._render(name, 32, toolbar=True)
         from tkinter.font import Font
-        self.images["eye"] = self._load_brand_eye(Font(root=root,family="Segoe UI",size=21).metrics("linespace"))
+        self.images["eye"] = self._load_brand_eye(Font(root=root,family="Segoe UI",size=20,weight="bold").metrics("linespace"))
+        self.images["brand_wordmark"] = self._load_brand_wordmark()
         self.images["eye_large"] = self._load_brand_eye(88)
         self.images["folder_large"] = self._render("folder", 52)
         self.images["computer_large"] = self._render("computer", 52)
@@ -1333,6 +1339,20 @@ class CrowEyesIconSet:
     def _rgb(value: str) -> Tuple[int, int, int, int]:
         value = value.lstrip("#")
         return (int(value[0:2], 16), int(value[2:4], 16), int(value[4:6], 16), 255)
+
+    def _load_brand_wordmark(self) -> ImageTk.PhotoImage:
+        from PIL import ImageFont
+        from tkinter.font import Font
+        metrics=Font(root=self.root,family='Segoe UI',size=20,weight='bold')
+        scale=4
+        pixel_size=round(20*float(self.root.tk.call('tk','scaling'))*scale)
+        font=ImageFont.truetype(str(Path(os.environ.get('WINDIR','C:/Windows'))/'Fonts/segoeuib.ttf'),pixel_size)
+        width=metrics.measure('CrowEyes')+4;height=metrics.metrics('linespace')
+        bitmap=Image.new('RGBA',(width*scale,height*scale))
+        fg=self._rgb(self.colors['fg']);bg=self._rgb(self.colors['toolbar'])
+        outline=tuple(round(fg[i]*.75+bg[i]*.25) for i in range(3))+(255,)
+        ImageDraw.Draw(bitmap).text((width*scale/2,height*scale/2),'CrowEyes',font=font,anchor='mm',fill=fg,stroke_width=2,stroke_fill=outline)
+        return ImageTk.PhotoImage(bitmap.resize((width,height),Image.Resampling.LANCZOS),master=self.root)
 
     def _load_brand_eye(self, size: int = 48) -> ImageTk.PhotoImage:
         path = resource_path("assets", "icons", "croweyes-2.0.png")
@@ -2399,7 +2419,7 @@ class CrowEyesImageViewer(tb.Window):
         else:
             self.navigate_to_computer()
 
-        if bool(self.settings.get("auto_register_associations", False)):
+        if bool(self.settings.get("auto_register_associations", True)) and not self.settings.get("initial_associations_registered",False):
             self.after(250, self._auto_register_file_associations)
 
         if bool(self.settings.get("auto_check_updates", True)):
@@ -3780,8 +3800,10 @@ class CrowEyesImageViewer(tb.Window):
             self._breadcrumb_overflow.pack(side='right',padx=(3,0))
             ToolTip(self._breadcrumb_overflow,'컴퓨터와 상위 폴더 선택 · 긴 경로에서는 메뉴 또는 휠 사용')
             self._breadcrumb_canvas=tk.Canvas(frame,height=32,highlightthickness=0,bg=self._theme()['toolbar'])
+            self._breadcrumb_canvas.tk.call(self._breadcrumb_canvas._w,'configure','-background',self._theme()['toolbar'])
             self._breadcrumb_canvas.pack(fill='x',expand=True)
             self._breadcrumb_links=ttk.Frame(self._breadcrumb_canvas,style='Chrome.TFrame')
+            self._breadcrumb_links.tk.call(self._breadcrumb_links._w,'configure','-style','Chrome.TFrame')
             self._breadcrumb_item=self._breadcrumb_canvas.create_window(0,0,window=self._breadcrumb_links,anchor='nw')
             def layout(event=None):
                 canvas=self._breadcrumb_canvas
@@ -3817,7 +3839,9 @@ class CrowEyesImageViewer(tb.Window):
         link('내 컴퓨터',None)
         if self.current_folder:
             for part in reversed((self.current_folder,*self.current_folder.parents)):
-                ttk.Label(links,text='›',style='Chrome.TLabel').pack(side='left',padx=2)
+                separator=ttk.Label(links,text='›',style='Chrome.TLabel')
+                separator.tk.call(separator._w,'configure','-style','Chrome.TLabel')
+                separator.pack(side='left',padx=2)
                 link(part.name or part.drive or str(part),part)
 
 
@@ -4605,7 +4629,7 @@ class CrowEyesImageViewer(tb.Window):
         style.configure("Viewer.TFrame", background=t["canvas_bg"], bordercolor=t["border"],
                         borderwidth=1, relief="solid")
         style.configure("TLabel", background=t["bg"], foreground=t["fg"], font=t["font"])
-        style.configure("Brand.TLabel", background=t["toolbar"], foreground=t["fg"], font=("Segoe UI", 21))
+        style.configure("Brand.TLabel", background=t["toolbar"], foreground=t["fg"], font=("Segoe UI", 20, "bold"))
         style.configure("Logo.TLabel", background=t["toolbar"], foreground=t["accent"], font=("Segoe UI", 17, "bold"))
         style.configure("Product.TLabel", background=t["toolbar"], foreground=t["muted"], font=("Segoe UI Semibold", 8))
         style.configure("Crumb.TLabel", background=t["toolbar"], foreground=t["muted"], font=("Segoe UI", 8))
@@ -4615,6 +4639,7 @@ class CrowEyesImageViewer(tb.Window):
             borderwidth=0, relief="flat", padding=(4, 2), font=("Segoe UI", 9),
         )
         style.map("Breadcrumb.TButton", background=[("active", t["select"])])
+        style.configure("Chrome.TLabel",background=t["toolbar"],foreground=t["fg"],font=("Segoe UI",9),borderwidth=0)
         style.configure("FileTitle.TLabel", background=t["toolbar"], foreground=t["fg"], font=("Segoe UI Semibold", 9))
         style.configure("Section.TLabel", background=t["panel"], foreground=t["muted"], font=("Segoe UI Semibold", 9))
         style.configure("Badge.TLabel", background=t["select"], foreground=t["accent_hi"], padding=(7, 2), font=("Segoe UI Semibold", 8))
@@ -5242,6 +5267,8 @@ class CrowEyesImageViewer(tb.Window):
         except (OSError, ValueError) as exc:
             self.status.configure(text=f"기본 프로그램 자동 등록 실패: {exc}")
             return
+        self.settings["initial_associations_registered"]=True
+        save_settings(self.settings)
         if applied:
             self.status.configure(text=f"CrowEyes 기본 연결 {len(applied)}개 자동 적용")
         elif protected:

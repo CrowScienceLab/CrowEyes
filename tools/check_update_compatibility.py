@@ -23,11 +23,13 @@ def load_comparator(path):
     return namespace
 
 
-old = load_comparator(ROOT / "CrowEyes_Image_Viewer_1.9.py")
+old = load_comparator(ROOT / "tools/fixtures/legacy_update_comparator.py")
 new = load_comparator(ROOT / "CrowEyes_Image_Viewer_1.9e.py")
 assert old["semantic_version"]("v1.9e") == old["semantic_version"]("1.9")
 assert not old["is_newer_version"]("v1.9e", "1.9")
 for version in ("1.8", "1.9", "1.9d", "1.9e"):
+    assert old["is_newer_version"]("v2.0.0", version)
+    assert new["is_newer_version"]("v2.0.0", version)
     assert old["is_newer_version"]("v1.9.1", version), version
     assert new["is_newer_version"]("v1.9.1", version), version
 assert new["APP_VERSION"] == "1.9e"

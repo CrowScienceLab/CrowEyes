@@ -40,7 +40,7 @@ with patch.object(extensions,'manifest',lambda:{'formats':record}),patch.object(
     except ValueError as exc:assert 'SHA-256' in str(exc)
     else:raise AssertionError('Wrong hash accepted')
 assert not (folder/'outside.txt').exists()
-for filename in ('CrowEyes_Image_Viewer_1.9.py','CrowEyes_Image_Viewer_1.9e.py','CrowEyes_Image_Viewer_2.0.py'):
+for filename in ('tools/fixtures/legacy_update_comparator.py','CrowEyes_Image_Viewer_1.9e.py','CrowEyes_Image_Viewer_2.0.py'):
     tree=ast.parse((ROOT/filename).read_text(encoding='utf-8'))
     nodes=[node for node in tree.body if isinstance(node,ast.FunctionDef) and node.name in {'semantic_version','is_newer_version'}]
     scope=dict(re=re,Tuple=Tuple,APP_UPDATE_VERSION='2.0.0',APP_VERSION='2.0.0')

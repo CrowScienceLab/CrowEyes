@@ -30,13 +30,26 @@ for source in (ROOT/'.bundled-runtime').rglob('*'):
         assert hashlib.file_digest(source.open('rb'),'sha256').digest()==hashlib.file_digest(packaged.open('rb'),'sha256').digest(),packaged
 with zipfile.ZipFile(release/f'CrowEyes_Portable_{version}_Windows_x64.zip') as zipped:
     assert 'CrowEyes.exe' in zipped.namelist() and zipped.testzip() is None
+    assert hashlib.sha256(zipped.read('CrowEyes.exe')).digest()==hashlib.file_digest((distribution/'CrowEyes.exe').open('rb'),'sha256').digest()
 with zipfile.ZipFile(release/f'CrowEyes_{data["store_version"]}_x64.msix') as zipped:
     assert zipped.testzip() is None
     manifest=ElementTree.fromstring(zipped.read('AppxManifest.xml'))
     assert manifest.find('{*}Identity').attrib['Version']==data['store_version']
+    assert manifest.find('{*}Identity').attrib['Name']=='170231F2.CrowEyes'
+    assert hashlib.sha256(zipped.read('CrowEyes.exe')).digest()==hashlib.file_digest((distribution/'CrowEyes.exe').open('rb'),'sha256').digest()
+    import ast
+    tree=ast.parse((ROOT/'CrowEyes_Image_Viewer_2.0.py').read_text(encoding='utf-8'))
+    options=next(ast.literal_eval(n.value) for n in tree.body if isinstance(n,ast.Assign) and any(isinstance(t,ast.Name) and t.id=='ASSOCIATION_OPTIONS' for t in n.targets))
+    extensions={value[0] for value in options}
+    manifest_extensions={node.text for node in manifest.findall('.//{*}FileType')}
+    assert extensions==manifest_extensions,(extensions,manifest_extensions)
+    installer=(ROOT/'installer/CrowEyes.iss').read_text(encoding='utf-8')
+    assert all('ValueName: "'+ext+'"' in installer for ext in extensions)
+    assert len(extensions)==29
+
 (release/'SHA256SUMS.txt').write_text(''.join(value['sha256']+'  '+name+'\n' for name,value in sorted(checks.items())),encoding='utf-8')
 sizes={}
-for label,path in [('1.9e',ROOT/'dist/review-v1.9e/CrowEyes'),(version,distribution)]:
+for label,path in [('1.9e',ROOT/'dist/v1.9e/CrowEyes'),(version,distribution)]:
     if path.exists():sizes[label]=sum(p.stat().st_size for p in path.rglob('*') if p.is_file())
 report=dict(version=data,status='PASS',core_bytes=sizes,artifacts=checks)
 if len(sys.argv)>1:

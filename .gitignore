@@ -33,3 +33,8 @@ content_filter_test_images/
 *.sqlite3
 *.sqlite3-wal
 *.sqlite3-shm
+
+.build-runtime/
+
+release/v1.9e/
+tmp/
