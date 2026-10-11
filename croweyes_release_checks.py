@@ -25,6 +25,23 @@ def run_workspace(viewer_type,report_path):
                 while time.monotonic()<end:viewer.update();time.sleep(.01)
             pump(1200)
             assert viewer.display_image is not None
+            assert [b._croweyes_action for b in viewer._navigation_tasks.winfo_children()]==['ai_generated','shield','ocr_region','index']
+            assert viewer._breadcrumb_targets[0].cget('text')=='컴퓨터'
+            for i,state in [(0,0),(2,4),(4,1)]:
+                cell=viewer._icon_cells[i]
+                cell.event_generate('<ButtonPress-1>',x=15,y=15,state=state)
+                cell.event_generate('<ButtonRelease-1>',x=15,y=15,state=state)
+                pump(160)
+            assert viewer._playlist_selection=={2,3,4}
+            viewer.goto_index(0);pump(200)
+            changes=[]
+            binding=viewer.canvas.bind('<Configure>',lambda e:changes.append((e.width,e.height)),add='+')
+            size=(viewer.canvas.winfo_width(),viewer.canvas.winfo_height());zoom=viewer.zoom
+            for mode in ('editor','viewer','editor','viewer'):
+                viewer.set_workspace(mode);pump(180)
+                assert (viewer.canvas.winfo_width(),viewer.canvas.winfo_height())==size and viewer.zoom==zoom
+            viewer.canvas.unbind('<Configure>',binding)
+            assert not changes,changes
             assert viewer.list_mode=='icons'
             assert {int(w.grid_info()['column']) for w in viewer._icon_grid_order}=={0,1,2,3}
             assert not hasattr(viewer,'_info_tab') and not hasattr(viewer,'_pixel_label')
@@ -78,7 +95,7 @@ def run_workspace(viewer_type,report_path):
             assert not [n for n in ('c2pa','numpy','onnxruntime','tokenizers') if n in sys.modules]
             viewer._on_close();viewer=None
             assert not errors,errors
-        results=dict(status='PASS',checks=['frozen viewer/editor','state retention','shared file list','inline highlight and undo/redo','six menus','800x600 bounds','one navigation row and four on-demand pages','four-column default','fitted settings without scrollbars','inline OCR results','single status pixel display','grid scroll boundary','no heavy imports'],callback_errors=errors)
+        results=dict(status='PASS',checks=['frozen viewer/editor','state retention','shared file list','inline highlight and undo/redo','six menus','800x600 bounds','breadcrumb links and four action icons','Ctrl/Shift grid events','no canvas resize on workspace switch','four-column default','fitted settings without scrollbars','inline OCR results','single status pixel display','grid scroll boundary','no heavy imports'],callback_errors=errors)
     except Exception as exc:
         import traceback
         results=dict(status='FAIL',error=str(exc),traceback=traceback.format_exc(),callback_errors=errors)

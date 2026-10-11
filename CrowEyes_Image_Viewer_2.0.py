@@ -1314,7 +1314,7 @@ class CrowEyesIconSet:
             "flip_v", "brightness", "contrast", "theme", "panel", "shortcuts",
             "slideshow", "close", "print", "up", "refresh", "search", "view",
             "sort", "ascending", "descending", "copy", "delete", "rename", "location",
-            "computer", "undo", "redo", "compare", "annotation", "highlight", "mosaic", "adjust", "restore", "resize",
+            "computer", "ai_generated", "shield", "ocr_region", "index", "undo", "redo", "compare", "annotation", "highlight", "mosaic", "adjust", "restore", "resize",
         )
         for name in toolbar_icons:
             self.images[name] = self._render(name, 24)
@@ -1364,7 +1364,7 @@ class CrowEyesIconSet:
                        "undo": ("#FBBF24", "#B45309"), "redo": ("#FBBF24", "#B45309"),
                        "annotation": ("#C4B5FD", "#7C3AED"), "highlight": ("#FDE047", "#CA8A04"),
                        "mosaic": ("#FDA4AF", "#DB2777"), "adjust": ("#FDBA74", "#EA580C"),
-                       "compare": ("#A5B4FC", "#6366F1"), "info": ("#7DD3FC", "#0284C7")}
+                       "compare": ("#A5B4FC", "#6366F1"), "info": ("#7DD3FC", "#0284C7"), "ai_generated": ("#C4B5FD","#7C3AED"), "shield": ("#6EE7B7","#047857"), "ocr_region": ("#FDBA74","#EA580C"), "index": ("#7DD3FC","#0284C7")}
             accent = self._rgb(accents.get(name, (self.colors["accent"], self.colors["accent"]))[0 if dark else 1])
             fg = accent
         # CrowLink/CrowPack-inspired visual language: generous optical scale,
@@ -1390,7 +1390,24 @@ class CrowEyesIconSet:
             else:
                 draw.rectangle(box_scaled, outline=outline, fill=fill, width=width)
 
-        if name == "eye":
+        if name in {"ai_generated","shield","ocr_region","index"}:
+            if name=="shield":
+                points=[(size*.5,size*.12),(size*.84,size*.25),(size*.78,size*.65),(size*.5,size*.87),(size*.22,size*.65),(size*.16,size*.25),(size*.5,size*.12)]
+                draw.polygon([(int(x*s),int(y*s)) for x,y in points],fill=accent)
+                poly([(size*.32,size*.49),(size*.45,size*.62),(size*.68,size*.35)],(245,255,250),max(4,int(size*.065*s)))
+            elif name=="index":
+                rectangle((size*.19,size*.23,size*.81,size*.75),outline=accent,fill=accent,radius=size*.06)
+                for y in (.25,.48,.70):ellipse((size*.19,size*(y-.09),size*.81,size*(y+.09)),outline=(230,248,255),width=max(3,line//2))
+            else:
+                rectangle((size*.15,size*.16,size*.85,size*.84),outline=accent,radius=size*.09)
+                from PIL import ImageFont
+                try:font=ImageFont.truetype('segoeuib.ttf',int(size*s*.37))
+                except OSError:font=ImageFont.load_default(size=int(size*s*.37))
+                draw.text((side*.5,side*.5),'AI' if name=='ai_generated' else 'T',font=font,anchor='mm',fill=accent)
+                if name=='ocr_region':
+                    for x,y,dx,dy in [(.10,.10,1,1),(.90,.10,-1,1),(.10,.90,1,-1),(.90,.90,-1,-1)]:
+                        poly([(size*(x+.1*dx),size*y),(size*x,size*y),(size*x,size*(y+.1*dy))],accent,max(3,line//2))
+        elif name == "eye":
             if app_badge:
                 ellipse((1.5, 1.5, size - 1.5, size - 1.5), outline=None, fill=panel, width=0)
             top = [(size * .10, size * .53), (size * .24, size * .34), (size * .50, size * .25),
@@ -1715,19 +1732,24 @@ class NavigationBar(ttk.Frame):
         search_wrap = ttk.Frame(self, style="Chrome.TFrame")
         search_wrap.grid(row=0, column=2, sticky="e")
         ttk.Label(search_wrap, image=viewer._icons["search"], style="Chrome.TLabel").pack(side=tk.LEFT, padx=(0, 5))
-        ttk.Label(search_wrap,text='파일 찾기',style='Chrome.TLabel').pack(side=tk.LEFT,padx=(0,5))
+        ttk.Label(search_wrap,text='파일(OCR) 찾기',style='Chrome.TLabel').pack(side=tk.LEFT,padx=(0,5))
         viewer._top_search = ttk.Entry(search_wrap, textvariable=viewer._search_var, width=14, style="Search.TEntry")
         viewer._navigation_tasks=ttk.Frame(self,style='Chrome.TFrame')
         viewer._navigation_tasks.grid(row=0,column=3,sticky='e',padx=(8,0))
         viewer._dock_tab_buttons={}
-        for name in ('정보','AI 생성 판단','성인 필터','도구'):
-            button=ttk.Button(viewer._navigation_tasks,text=name,style='Icon.Tool.TButton',command=lambda n=name:viewer.select_dock(n))
+        actions=[('ai_generated','AI 생성 판단',lambda:viewer.select_dock('AI 생성 판단')),
+                 ('shield','성인 필터',lambda:viewer.select_dock('성인 필터')),
+                 ('ocr_region','영역 글자인식',viewer.ocr_region),
+                 ('index','정보 색인 · 촬영일과 OCR 함께 등록',viewer.index_all)]
+        for icon,label,command in actions:
+            button=_tool_button(viewer._navigation_tasks,'',label,command,0,viewer._icons['toolbar_'+icon])
             button.pack(side=tk.LEFT,padx=2)
-            viewer._dock_tab_buttons[name]=button
+            button._croweyes_action=icon
+            if icon in ('ai_generated','shield'):viewer._dock_tab_buttons['AI 생성 판단' if icon=='ai_generated' else '성인 필터']=button
         viewer._top_search.pack(side=tk.LEFT, ipady=0)
         viewer._top_search.bind("<KeyRelease>", viewer._apply_playlist_filter)
         viewer._top_search.bind("<Escape>", lambda _e: (viewer._search_var.set(""), viewer._apply_playlist_filter()))
-        ToolTip(viewer._top_search, "현재 폴더의 파일·하위 폴더 이름을 즉시 검색")
+        ToolTip(viewer._top_search, "현재 폴더에서 파일명·색인한 사진 속 글자·촬영일을 검색 (날짜 예: 2026-10)")
 
 
 class CrowEyesToolbar(ttk.Frame):
@@ -2984,6 +3006,8 @@ class CrowEyesImageViewer(tb.Window):
                     lbl.bind("<Double-Button-1>", lambda _e: "break")
                     lbl.bind("<Button-3>", lambda e, idx=i: self._show_icon_context_menu(e, idx))
                     self._register_playlist_drag_source(lbl, i)
+                    for sequence in ('<Button-1>','<Control-Button-1>','<Shift-Button-1>','<Control-Shift-Button-1>'):
+                        lbl.bind(sequence,lambda e,idx=i:self._on_icon_click(e,idx))
                     self._icon_cells[i] = lbl
                 else:
                     key = f"{kind}:{p}"
@@ -3061,8 +3085,12 @@ class CrowEyesImageViewer(tb.Window):
         ctrl = bool(int(getattr(event, "state", 0)) & 0x0004)
         shift = bool(int(getattr(event, "state", 0)) & 0x0001)
         if shift and self._selection_anchor is not None:
-            lo, hi = sorted((self._selection_anchor, idx))
-            self._playlist_selection = set(range(lo, hi + 1))
+            visible=self._visible_playlist_indices()
+            if self._selection_anchor in visible and idx in visible:
+                lo,hi=sorted((visible.index(self._selection_anchor),visible.index(idx)))
+                selected=set(visible[lo:hi+1])
+            else:selected={idx}
+            self._playlist_selection=(self._playlist_selection|selected) if ctrl else selected
         elif ctrl:
             if idx in self._playlist_selection:
                 self._playlist_selection.discard(idx)
@@ -3081,6 +3109,7 @@ class CrowEyesImageViewer(tb.Window):
         self.goto_index(idx, from_list=True)
         self._highlight_icon_selection()
         self._queue_thumbs_priority()
+        return "break"
 
     def _on_folder_icon_click(self, _event, path: Path) -> None:
         self._navigate_playlist_folder(path)
@@ -3647,17 +3676,43 @@ class CrowEyesImageViewer(tb.Window):
     def _update_breadcrumb(self) -> None:
         frame=getattr(self,'_breadcrumb_frame',None)
         if frame is None:return
-        for child in frame.winfo_children():child.destroy()
-        frame.columnconfigure(1,weight=1)
-        label=ttk.Label(frame,text='폴더 경로',image=self._icons['folder'],compound=tk.LEFT,style='Chrome.TLabel')
-        label.grid(row=0,column=0,padx=(0,6))
-        label.bind('<Button-1>',lambda e:self.open_folder_dialog())
-        ToolTip(label,'폴더 열기 (Ctrl+Shift+O)')
-        value=tk.StringVar(value=str(self.current_folder) if self.current_folder else '폴더를 열어 주세요')
-        path=ttk.Entry(frame,textvariable=value,width=1,state='readonly')
-        path._croweyes_path_var=value
-        path.grid(row=0,column=1,sticky='ew')
-        ToolTip(path,lambda:value.get())
+        stamp=(str(self.current_folder),self._theme()['toolbar'])
+        if getattr(self,'_breadcrumb_stamp',None)==stamp and hasattr(self,'_breadcrumb_canvas') and self._breadcrumb_canvas.winfo_exists():return
+        self._breadcrumb_stamp=stamp
+        if not hasattr(self,'_breadcrumb_canvas') or not self._breadcrumb_canvas.winfo_exists():
+            self._breadcrumb_overflow=ttk.Menubutton(frame,text='…',width=2,style='Chrome.TMenubutton')
+            self._breadcrumb_overflow.pack(side='left',padx=(0,3))
+            ToolTip(self._breadcrumb_overflow,'컴퓨터와 상위 폴더 선택 · 긴 경로에서는 메뉴 또는 휠 사용')
+            self._breadcrumb_canvas=tk.Canvas(frame,height=32,highlightthickness=0,bg=self._theme()['toolbar'])
+            self._breadcrumb_canvas.pack(fill='x',expand=True)
+            self._breadcrumb_links=ttk.Frame(self._breadcrumb_canvas,style='Chrome.TFrame')
+            self._breadcrumb_item=self._breadcrumb_canvas.create_window(0,0,window=self._breadcrumb_links,anchor='nw')
+            def layout(event=None):
+                canvas=self._breadcrumb_canvas
+                canvas.configure(scrollregion=(0,0,max(canvas.winfo_width(),self._breadcrumb_links.winfo_reqwidth()),32))
+                canvas.xview_moveto(1)
+            self._breadcrumb_canvas.bind('<Configure>',layout)
+            self._breadcrumb_links.bind('<Configure>',layout)
+            self._breadcrumb_canvas.bind('<MouseWheel>',lambda e:self._breadcrumb_canvas.xview_scroll(-2 if e.delta>0 else 2,'units'))
+        links=self._breadcrumb_links
+        for child in links.winfo_children():child.destroy()
+        self._breadcrumb_targets=[]
+        if hasattr(self,'_breadcrumb_menu'):self._breadcrumb_menu.destroy()
+        self._breadcrumb_menu=tk.Menu(self,tearoff=False)
+        self._breadcrumb_overflow.configure(menu=self._breadcrumb_menu)
+        def link(text,target):
+            button=ttk.Button(links,text=text,style='Chrome.TButton',command=self.navigate_to_computer if target is None else lambda p=target:self._navigate_playlist_folder(p))
+            button.pack(side='left')
+            button._croweyes_target=target
+            self._breadcrumb_menu.add_command(label='컴퓨터' if target is None else str(target),command=self.navigate_to_computer if target is None else lambda p=target:self._navigate_playlist_folder(p))
+            button.bind('<MouseWheel>',lambda e:(self._breadcrumb_canvas.xview_scroll(-2 if e.delta>0 else 2,'units'),'break')[-1])
+            self._breadcrumb_targets.append(button)
+            ToolTip(button,'내 컴퓨터' if target is None else str(target))
+        link('컴퓨터',None)
+        if self.current_folder:
+            for part in reversed((self.current_folder,*self.current_folder.parents)):
+                ttk.Label(links,text='›',style='Chrome.TLabel').pack(side='left',padx=2)
+                link(part.name or part.drive or str(part),part)
 
 
     def open_path(self, path: Path) -> None:

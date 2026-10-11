@@ -39,7 +39,7 @@ for width,height in [(1280,850),(800,600)]:
     for name,b in v._dock_tab_buttons.items():
         assert b.winfo_ismapped()
         assert b.winfo_rootx()+b.winfo_width()<=v.winfo_rootx()+v.winfo_width(),name
-    assert len({b.winfo_y() for b in v._dock_tab_buttons.values()})==1
+    assert len({b.winfo_y() for b in v._navigation_tasks.winfo_children()})==1
     for action in (v.show_preferences,v.performance_dialog,v.extensions_dialog):
         action();pump()
         dialogs=[w for w in v.winfo_children() if w.__class__.__name__=='FittedDialog']

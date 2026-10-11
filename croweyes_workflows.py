@@ -19,12 +19,16 @@ class Catalog:
         self.path.parent.mkdir(parents=True, exist_ok=True)
         with self.connect() as db:
             db.execute('CREATE TABLE IF NOT EXISTS items(path TEXT PRIMARY KEY, taken TEXT DEFAULT "", text TEXT DEFAULT "", fingerprint TEXT DEFAULT "")')
+            columns={row[1] for row in db.execute('PRAGMA table_info(items)')}
+            if 'ocr_fingerprint' not in columns:
+                db.execute('ALTER TABLE items ADD COLUMN ocr_fingerprint TEXT DEFAULT ""')
+
 
     def connect(self):
         return sqlite3.connect(self.path, timeout=10)
 
     def set(self, path, **fields):
-        valid = {'taken', 'text', 'fingerprint'}
+        valid = {'taken', 'text', 'fingerprint', 'ocr_fingerprint'}
         if not fields or not fields.keys() <= valid:
             raise ValueError('Unknown catalog field')
         path = str(Path(path).resolve())
@@ -40,6 +44,18 @@ class Catalog:
     def move(self, source, target):
         with self.connect() as db:
             db.execute('UPDATE items SET path=? WHERE path=?', (str(Path(target).resolve()), str(Path(source).resolve())))
+
+    def delete(self,paths=None,missing=False):
+        with self.connect() as db:
+            if missing:
+                paths=[row[0] for row in db.execute('SELECT path FROM items') if not Path(row[0]).is_file()]
+            before=db.total_changes
+            if paths is None:db.execute('DELETE FROM items')
+            else:db.executemany('DELETE FROM items WHERE path=?',[(str(Path(p).resolve()),) for p in paths])
+            count=db.total_changes-before
+            db.commit()
+            db.execute('VACUUM')
+            return count
 
 
 def register_format(path):

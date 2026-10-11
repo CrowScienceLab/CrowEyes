@@ -15,6 +15,8 @@ class WorkspaceToolbar(ttk.Frame):
         super().__init__(master, style='Toolbar.TFrame', padding=(10,4))
         self.viewer=viewer
         self._columns=None
+        self.pack_propagate(False)
+        self.configure(height=62)
         self.menu_row=tk.Menu(viewer,tearoff=False)
         viewer.configure(menu=self.menu_row)
         viewer._menus=[]
@@ -60,14 +62,14 @@ class WorkspaceToolbar(ttk.Frame):
         add(m,'편집 작업 공간',lambda:v.set_workspace('editor'))
         for label,cmd,key in [('실행 취소',v.undo_edit,'Ctrl+Z'),('재실행',v.redo_edit,'Ctrl+Y'),('원본 복원',v.restore_original,''),('오른쪽 회전',lambda:v.rotate(90),'Ctrl+R'),('왼쪽 회전',lambda:v.rotate(-90),'Ctrl+L'),('좌우 반전',v.toggle_flip_h,''),('상하 반전',v.toggle_flip_v,''),('크기·비율 변경 후 저장',lambda:v.select_edit_tool('크기·비율'),''),('영역 선택 후 복사',v.start_region_copy,''),('영역 선택 후 저장',lambda:v.start_region_copy('save'),''),('주석',v.annotation_dialog,''),('형광펜',lambda:v.select_edit_tool('형광펜'),''),('모자이크',lambda:v.select_edit_tool('모자이크'),''),('편집 전후 비교',v.compare_before_after,'')]:add(m,label,cmd,key)
         m=menu('정리')
-        for label,cmd in [('촬영일·OCR 글자 검색',v.search_dialog),('이름 변경',v.rename_selected_file),('일괄 이름 변경',v.rename_batch_dialog),('일괄 변환·크기·이름 변경',v.batch_dialog),('동일 파일 찾기',lambda:v.duplicate_dialog(False)),('유사 이미지 찾기',lambda:v.duplicate_dialog(True)),('선택 파일 복사',v.copy_selected_files),('휴지통으로 삭제',v.delete_selected_files),('파일 위치 열기',v.open_selected_file_location)]:add(m,label,cmd)
+        for label,cmd in [('파일(OCR) 찾기',v.search_dialog),('검색 색인 삭제',v.delete_index_dialog),('이름 변경',v.rename_selected_file),('일괄 이름 변경',v.rename_batch_dialog),('일괄 변환·크기·이름 변경',v.batch_dialog),('동일 파일 찾기',lambda:v.duplicate_dialog(False)),('유사 이미지 찾기',lambda:v.duplicate_dialog(True)),('선택 파일 복사',v.copy_selected_files),('휴지통으로 삭제',v.delete_selected_files),('파일 위치 열기',v.open_selected_file_location)]:add(m,label,cmd)
         m.add_separator()
         for name in c.SORT_KEYS:
             m.add_radiobutton(label=c.SORT_LABELS[name],variable=v._sort_var,value=name,command=lambda n=name:v.set_sort(n))
         m.add_radiobutton(label='오름차순',variable=v._sort_desc_var,value=False,command=lambda:v.set_sort_direction(False))
         m.add_radiobutton(label='내림차순',variable=v._sort_desc_var,value=True,command=lambda:v.set_sort_direction(True))
         m=menu('도구')
-        for label,cmd in [('글자 인식 (OCR)',v.ocr_dialog),('영역 글자 인식',v.ocr_region),('촬영일 색인',lambda:v.index_collection(False)),('OCR 내용 색인',lambda:v.index_collection(True)),('C2PA 출처 확인',v.provenance_dialog),('EXIF·GPS·색상 정보',v.metadata_dialog)]:add(m,label,cmd)
+        for label,cmd in [('글자 인식 (OCR)',v.ocr_dialog),('영역 글자 인식',v.ocr_region),('정보 색인 · 촬영일 + OCR',v.index_all),('C2PA 출처 확인',v.provenance_dialog),('EXIF·GPS·색상 정보',v.metadata_dialog)]:add(m,label,cmd)
         m=menu('설정')
         for label,cmd in [('기본 포함 기능 안내',v.extensions_dialog),('보기·성능',v.performance_dialog),('환경설정·콘텐츠 필터',v.show_preferences),('기본 앱 등록',v.show_file_association_dialog),('Windows 실행 차단 안내',v.show_windows_security_help),('업데이트 확인',lambda:v.check_for_updates(manual=True)),('CrowEyes 정보',v.show_about)]:add(m,label,cmd)
 
@@ -85,6 +87,7 @@ class WorkspaceToolbar(ttk.Frame):
             callback=command if name=='play' else v._action(command)
             button=c._tool_button(self.buttons,"",tip,callback,0,v._icons['toolbar_'+name])
             button.configure(compound=tk.NONE, text="")
+            button.tk.call(button._w,'configure','-style','Icon.Tool.TButton')
             v._toolbar_buttons.append(button)
             button._croweyes_action=name
             if name=='play':v._slide_btn=button
@@ -96,9 +99,11 @@ class WorkspaceToolbar(ttk.Frame):
         if not self.winfo_exists() or not self.viewer._toolbar_buttons:return
         buttons=self.viewer._toolbar_buttons
         tile=max(b.winfo_reqwidth() for b in buttons)+4
-        cols=max(1,min(len(buttons),max(1,width)//tile))
+        cols=max(1,min(14,max(1,width)//tile))
         if cols==self._columns:return
         self._columns=cols
+        rows=(14+cols-1)//cols
+        self.configure(height=max(48,rows*(max(b.winfo_reqheight() for b in buttons)+6))+8)
         for i in range(16):self.buttons.columnconfigure(i,minsize=tile if i<cols else 0)
         for i,b in enumerate(buttons):b.grid(row=i//cols,column=i%cols,padx=2,pady=3,sticky='ew')
 
@@ -127,12 +132,11 @@ class WorkspaceMixin(DockMixin,InlineEditorMixin):
         if self._info_visible:self.hide_info_panel()
         self.end_edit_tool()
         self.toolbar.populate()
-        self._apply_theme()
-        self._restore_panes()
         self.status.configure(text='편집 · 저장은 사본으로 내보냅니다' if mode=='editor' else '뷰어 · 방향키로 사진을 이동합니다')
 
     def _restore_panes(self):
-        super()._restore_panes()
+        expected=[str(p) for visible,p in [(self._playlist_visible,self.left_panel),(True,self._center_panel),(self._info_visible,self._right_panel)] if visible]
+        if list(self.paned.panes())!=expected:super()._restore_panes()
         self.navigation_bar.grid(row=1,column=0,sticky='ew')
         self.context_bar.grid(row=3,column=0,sticky='ew')
         if not self._context_visible:self.context_bar.grid_remove()

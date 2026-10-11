@@ -113,9 +113,7 @@ class DockMixin:
         ttk.Button(safety,text='필터 적용',command=apply).pack(fill='x',pady=8)
         self._dock_filter_status.pack(anchor='w',pady=8)
         tools=self._dock_pages['도구'].body
-        commands=[('글자 인식 (OCR)',self.ocr_dialog),('영역 글자 인식',self.ocr_region),
-                  ('촬영일 색인',lambda:self.index_collection(False)),('OCR 내용 색인',lambda:self.index_collection(True)),
-                  ('촬영일·글자 검색',self.search_dialog)]
+        commands=[('정보 색인 · 촬영일 + OCR',self.index_all),('검색 색인 삭제',self.delete_index_dialog)]
         for text,command in commands:ttk.Button(tools,text=text,command=command).pack(fill='x',pady=3,before=self._dock_tasks['도구'])
     def _sync_dock_buttons(self):
         for name,button in getattr(self,'_dock_tab_buttons',{}).items():

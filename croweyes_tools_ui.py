@@ -312,6 +312,63 @@ class FeaturesMixin:
             self._text('색인 결과','PC 검색 DB에 저장했습니다. 정리 → 촬영일·OCR 글자 검색에서 찾을 수 있습니다.\n취소된 작업은 완료된 항목까지 보존됩니다.\n'+('\n'.join(errors) if errors else '처리한 항목에 오류 없음'))
         self._job('OCR 색인' if ocr else '촬영 정보 색인',work,done)
 
+    def index_all(self):
+        if not self.folder_files:return
+        if self._tool_cancels:
+            self.status.configure(text='진행 중인 작업을 완료하거나 취소한 뒤 색인하세요.');return
+        self._ensure_catalog()
+        paths=list(self.folder_files);catalog=self._catalog
+        from croweyes_workflows import metadata,open_image
+        def work(cancel,progress):
+            from croweyes_ocr import recognize
+            existing=catalog.all();errors=[];done=skipped=0
+            for i,path in enumerate(paths):
+                if cancel.is_set():break
+                try:
+                    stat=path.stat();fingerprint=f'{stat.st_size}:{stat.st_mtime_ns}'
+                    previous=existing.get(str(path.resolve()),{})
+                    if previous.get('fingerprint')==fingerprint and previous.get('ocr_fingerprint')==fingerprint:
+                        skipped+=1
+                    else:
+                        self._guard_paths([path],cancel)
+                        details=metadata(path)
+                        taken=str(details.get('DateTimeOriginal',details.get('DateTime','')))
+                        catalog.set(path,taken=taken,text='',fingerprint='',ocr_fingerprint='')
+                        text=recognize(open_image(path,preview=True),cancel)
+                        if cancel.is_set():break
+                        catalog.set(path,taken=taken,text=text,fingerprint=fingerprint,ocr_fingerprint=fingerprint)
+                        done+=1
+                except Exception as exc:errors.append(path.name+': '+str(exc))
+                progress(i+1,len(paths))
+            return done,skipped,errors,cancel.is_set()
+        def finish(result):
+            self._catalog_rows=catalog.all()
+            self._apply_playlist_filter()
+            done,skipped,errors,cancelled=result
+            self._text('정보 색인 결과',f'등록 {done}개 · 변경 없는 파일 {skipped}개\n'+('취소됨 · 완료된 자료는 보존합니다.\n' if cancelled else '')+'파일(OCR) 찾기에 파일명, 사진 속 글자 또는 촬영일을 입력하세요.\n촬영일이 없는 사진은 날짜 검색에 포함되지 않습니다.\n'+('\n'.join(errors) if errors else '오류 없음'))
+        self._job('정보 색인 · 촬영일 + OCR',work,finish)
+
+    def delete_index_dialog(self):
+        self._ensure_catalog()
+        win,frame=self._window('검색 색인 삭제')
+        scope=tk.StringVar(value='folder')
+        ttk.Label(frame,text='검색 DB의 글자·촬영일만 삭제합니다.\n원본 이미지 파일은 유지합니다.',wraplength=230).pack(anchor='w',pady=8)
+        for text,value in [('현재 폴더 색인','folder'),('선택한 사진 색인','selected'),('없는 파일의 색인 정리','missing'),('전체 검색 색인','all')]:
+            ttk.Radiobutton(frame,text=text,variable=scope,value=value).pack(anchor='w',pady=3)
+        def remove():
+            if self._tool_cancels:
+                self.status.configure(text='진행 중인 작업을 완료하거나 취소한 뒤 삭제하세요.');return
+            if not messagebox.askyesno('검색 색인 삭제','선택한 범위의 검색 색인을 삭제할까요?\n원본 이미지는 삭제하지 않습니다.',parent=self):return
+            choice=scope.get()
+            paths=list(self.folder_files) if choice=='folder' else self._paths() if choice=='selected' else None
+            try:count=self._catalog.delete(paths,missing=choice=='missing')
+            except Exception as exc:
+                messagebox.showerror('검색 색인 삭제',str(exc),parent=self);return
+            self._catalog_rows=self._catalog.all();self._collection_filter={}
+            self._apply_playlist_filter();win.destroy()
+            self._text('검색 색인 삭제 결과',f'검색 자료 {count}개를 삭제했습니다.\nDB의 불필요한 공간도 정리했습니다.')
+        ttk.Button(frame,text='색인 삭제',command=remove).pack(pady=10)
+
     def _save_display_image(self, destination, image=None):
         self.quality_dialog(image=image, destination=destination)
 
@@ -397,29 +454,27 @@ class FeaturesMixin:
         self._catalog_rows = self._catalog.all()
 
     def search_dialog(self):
-        self._ensure_catalog()
-        win,frame=self._window('촬영일·OCR 글자 검색','480x350')
-        text=tk.StringVar();date=tk.StringVar()
-        for label,var in [('촬영일 앞부분 (예: 2026:10)',date),('사진 속 글자',text)]:
-            ttk.Label(frame,text=label).pack(anchor='w')
-            ttk.Entry(frame,textvariable=var,width=38).pack(fill='x',pady=4)
-        def apply():
-            self._collection_filter=dict(date=date.get(),text=text.get().casefold())
-            self._apply_playlist_filter();win.destroy()
-        ttk.Button(frame,text='검색 적용',command=apply).pack(pady=5)
-        ttk.Button(frame,text='검색 해제',command=lambda:(self._collection_filter.clear(),self._apply_playlist_filter(),win.destroy())).pack()
-        ttk.Button(frame,text='현재 폴더 촬영일 색인',command=lambda:self.index_collection(False)).pack(pady=4)
-        ttk.Button(frame,text='사진 속 글자 검색 준비 (OCR 색인)',command=lambda:self.index_collection(True)).pack()
+        self._collection_filter={}
+        self._top_search.focus_set()
+        self._top_search.selection_range(0,'end')
+        self.status.configure(text='파일(OCR) 찾기 · 파일명 / 색인한 글자 / 촬영일 (예: 2026-10)')
 
     def _visible_playlist_indices(self):
-        indices=super()._visible_playlist_indices()
-        f=self._collection_filter
-        if not f:
-            return indices
-        def matches(i):
-            item=self._catalog_rows.get(str(self.folder_files[i].resolve()),{})
-            return item.get('taken','').startswith(f.get('date','')) and f.get('text','') in item.get('text','').casefold()
-        return [i for i in indices if matches(i)]
+        query=self._search_var.get().strip().casefold()
+        if query and self._catalog is None:self._ensure_catalog()
+        def normalized(text):
+            return str(text).casefold().replace(':','-').replace('/','-').replace('.','-')
+        terms=normalized(query).split()
+        indices=[]
+        for i,path in enumerate(self.folder_files):
+            item=self._catalog_rows.get(str(path),{})
+            haystack=normalized(path.name+' '+item.get('taken','')+' '+item.get('text',''))
+            if not all(term in haystack for term in terms):continue
+            f=self._collection_filter
+            if f and not (item.get('taken','').startswith(f.get('date','')) and f.get('text','') in item.get('text','').casefold()):continue
+            indices.append(i)
+        self._filtered_indices=indices
+        return indices
 
     def duplicate_dialog(self, similar):
         from croweyes_workflows import duplicates
@@ -451,7 +506,7 @@ class FeaturesMixin:
             ('빠른 이미지 보기','일반 사진은 AI 모델 없이 바로 봅니다. RAW는 파일을 열 때 미리보기를 준비합니다.\n열기 Ctrl+O · 맞춤 Ctrl+1 · 원본 크기 Ctrl+0'),
             ('C2PA 출처 / AI 생성 판단','상단 AI 생성 판단 → 현재 사진 출처 검사. 생성·편집 선언과 출처 검증을 확인합니다. 기록이 없으면 판별 불가입니다.'),
             ('성인 콘텐츠 필터','상단 성인 필터에서 켜고 적용합니다. PC 안에서 처리하며 판별 불가 파일도 숨깁니다. 기본값은 끄기입니다.'),
-            ('글자 인식 / 촬영일 색인','상단 도구에서 OCR과 색인을 실행합니다. 인식 결과는 복사하고, 색인한 글자·촬영일은 PC의 검색 DB에서 찾습니다.'),
+            ('글자 인식 / 촬영일 색인','상단 정보 색인에서 글자(OCR)·촬영일을 함께 등록합니다. 파일(OCR) 찾기에서 사진 속 글자와 날짜로 찾고, 색인 삭제 메뉴로 정리합니다.'),
             ('사본으로 편집·저장','주석·형광펜·모자이크, 영역 복사, 크기·비율 변경을 제공합니다.\n취소 Ctrl+Z · 재실행 Ctrl+Y · 저장 Ctrl+S'),
             ('사진에 집중하는 화면','공통 4열 파일목록, 필요할 때 여는 정보·검사 열을 사용합니다.\n이전/다음 ←/→ · 재생 F5 · 정보 F8 · 전체 화면 F11')]
         for i,(title,description) in enumerate(features):
