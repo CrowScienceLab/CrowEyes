@@ -14,7 +14,7 @@ try:
     u.SendMessageW.argtypes=[ctypes.c_void_p,ctypes.c_uint,ctypes.c_size_t,ctypes.c_ssize_t];u.SendMessageW.restype=ctypes.c_ssize_t
     def native_icon():
         return u.SendMessageW(u.GetAncestor(v.winfo_id(),2),0x7f,0,0)
-    assert native_icon(), 'Windows title-bar has no explicit small icon' 
+    assert native_icon(), 'Windows title-bar has no explicit small icon'
     for theme in ('bright_sky_blue','white_light_pink','croweyes_dark'):
         v.set_ui_theme(theme);v.update()
         assert native_icon()
