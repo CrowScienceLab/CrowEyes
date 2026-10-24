@@ -6,13 +6,14 @@ import zipfile
 
 ROOT=Path(__file__).resolve().parents[1]
 manifest=json.loads((ROOT/'extensions.json').read_text())
+version=json.loads((ROOT/'version.json').read_text())['version']
 target=ROOT/'.bundled-runtime'
 target.mkdir(exist_ok=True)
 seen={}
 included={}
 for kind in ('provenance','safety','formats'):
     item=manifest[kind]
-    archive=ROOT/'release/review-v2.0.0'/item['filename']
+    archive=ROOT/'release'/f'review-v{version}'/item['filename']
     with archive.open('rb') as stream:
         assert hashlib.file_digest(stream,'sha256').hexdigest()==item['sha256']
     with zipfile.ZipFile(archive) as zipped:

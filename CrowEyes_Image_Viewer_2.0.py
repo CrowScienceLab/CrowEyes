@@ -184,6 +184,7 @@ DEFAULT_SETTINGS = {
     "anim_playing": True,
     "sort_by": "name",  # name | date | size | ext
     "sort_desc": False,
+    "show_hidden_files": False,
     "show_info_panel": False,
     "ui_theme": "croweyes_dark",
     "show_playlist_panel": True,
@@ -990,7 +991,7 @@ def is_image_file(path: Path) -> bool:
     return path.is_file() and path.suffix.lower() in SUPPORTED_EXT
 
 
-def list_image_paths_fast(folder: Path) -> List[Path]:
+def list_image_paths_fast(folder: Path, show_hidden: bool = False) -> List[Path]:
     """Fast name-only scan via os.scandir (no thumbnail I/O)."""
     out: List[Path] = []
     try:
@@ -1001,19 +1002,23 @@ def list_image_paths_fast(folder: Path) -> List[Path]:
                 name = entry.name
                 ext = os.path.splitext(name)[1].lower()
                 if ext in SUPPORTED_EXT:
-                    out.append(Path(entry.path))
+                    from croweyes_files import entry_hidden
+                    if show_hidden or not entry_hidden(entry):
+                        out.append(Path(entry.path))
     except OSError:
         pass
     return out
 
 
-def list_subdirs(folder: Path) -> List[Path]:
+def list_subdirs(folder: Path, show_hidden: bool = False) -> List[Path]:
     dirs: List[Path] = []
     try:
         with os.scandir(folder) as it:
             for entry in it:
-                if entry.is_dir(follow_symlinks=False) and not entry.name.startswith("."):
-                    dirs.append(Path(entry.path))
+                if entry.is_dir(follow_symlinks=False):
+                    from croweyes_files import entry_hidden
+                    if show_hidden or not entry_hidden(entry):
+                        dirs.append(Path(entry.path))
     except OSError:
         pass
     dirs.sort(key=lambda p: p.name.lower())
@@ -1319,11 +1324,11 @@ class CrowEyesIconSet:
             "flip_v", "brightness", "contrast", "theme", "panel", "shortcuts",
             "slideshow", "close", "print", "up", "refresh", "search", "view",
             "sort", "ascending", "descending", "copy", "delete", "rename", "location",
-            "computer", "ai_generated", "shield", "ocr_region", "index", "undo", "redo", "compare", "annotation", "highlight", "mosaic", "adjust", "restore", "resize",
+            "computer", "ai_generated", "shield", "ocr_region", "index", "undo", "redo", "compare", "annotation", "highlight", "mosaic", "adjust", "restore", "resize", "hidden", "visible",
         )
         for name in toolbar_icons:
             self.images[name] = self._render(name, 24)
-            self.images["toolbar_" + name] = self._render(name, 32, toolbar=True)
+            self.images["toolbar_" + name] = self._render(name, 36, toolbar=True)
         from tkinter.font import Font
         self.images["eye"] = self._load_brand_eye(Font(root=root,family="Segoe UI",size=20,weight="bold").metrics("linespace"))
         self.images["brand_wordmark"] = self._load_brand_wordmark()
@@ -1367,6 +1372,10 @@ class CrowEyesIconSet:
             return self._render("eye", size)
 
     def _render(self, name: str, size: int, app_badge: bool = False, toolbar: bool = False) -> ImageTk.PhotoImage:
+        from croweyes_icons import render_icon
+        rendered = render_icon(name, size, self.colors['bg'] == CROWEYES_THEMES['croweyes_dark']['bg'])
+        if rendered is not None:
+            return ImageTk.PhotoImage(rendered, master=self.root)
         scale = 4
         side = size * scale
         image = Image.new("RGBA", (side, side), (0, 0, 0, 0))
@@ -1931,12 +1940,7 @@ class PlaylistPanel(ttk.Frame):
         header = ttk.Frame(self, style="Panel.TFrame")
         header.pack(fill=tk.X)
         ttk.Label(header, text="파일 목록", style="Section.TLabel").pack(side=tk.LEFT)
-        viewer._list_mode_display_var = tk.StringVar(value=LIST_MODE_LABELS[viewer.list_mode])
-        choice = ttk.Combobox(header, textvariable=viewer._list_mode_display_var,
-                             values=list(LIST_MODE_LABELS.values()), state='readonly', width=12)
-        choice.pack(side=tk.LEFT, padx=6)
-        choice.bind('<<ComboboxSelected>>', lambda e: viewer.set_list_mode(
-            next(k for k,v in LIST_MODE_LABELS.items() if v==viewer._list_mode_display_var.get())))
+        viewer.build_browser_menus(header)
         close = tk.Button(
             header, image=viewer._icons["close"], command=viewer.hide_playlist_panel,
             bd=0, relief=tk.FLAT, cursor="hand2", padx=4, pady=4,
@@ -2235,6 +2239,16 @@ class PrintPreview(tk.Toplevel):
 
 
 class CrowEyesImageViewer(tb.Window):
+    def _apply_window_icon(self) -> None:
+        self.iconphoto(True, self._icons["app"])
+        try:
+            icon = str(resource_path("assets", "icons", "croweyes-2.0.ico"))
+            # default= alone does not set the current Windows title-bar icon.
+            self.iconbitmap(default=icon)
+            self.iconbitmap(icon)
+        except (OSError, tk.TclError):
+            pass
+
     def __init__(self, start_path: Optional[str] = None) -> None:
         # ttkbootstrap initializes localization immediately after Tk. Some
         # Anaconda builds ship msgcat but omit its Tcl module search path.
@@ -2252,11 +2266,7 @@ class CrowEyesImageViewer(tb.Window):
                 pass
         self.settings = load_settings()
         self._icons = CrowEyesIconSet(self, self._theme())
-        self.iconphoto(True, self._icons["app"])
-        try:
-            self.iconbitmap(default=str(resource_path("assets", "icons", "croweyes-2.0.ico")))
-        except (OSError, tk.TclError):
-            pass
+        self._apply_window_icon()
         self.title(APP_TITLE)
         self.geometry(self.settings.get("window_geometry", "1120x760"))
         self.minsize(860, 520)
@@ -2660,8 +2670,9 @@ class CrowEyesImageViewer(tb.Window):
         self._resort_playlist(keep_current=True)
 
     def _sort_key(self, p: Path):
-        name = p.name.lower()
-        ext = p.suffix.lower()
+        from croweyes_files import natural_key
+        name = natural_key(p.name)
+        ext = p.suffix.casefold()
         if self.sort_by not in {"date", "size"}:
             return (ext, name) if self.sort_by == "ext" else (name,)
         cache_key = str(p)
@@ -2685,6 +2696,7 @@ class CrowEyesImageViewer(tb.Window):
 
     def _resort_playlist(self, keep_current: bool = True) -> None:
         cur = self.folder_files[self.index] if 0 <= self.index < len(self.folder_files) else None
+        selected = set(self._selected_playlist_paths())
         self.folder_files = self._sorted(self.folder_files)
         self._cancel_thumb_jobs()
         self._populate_list_names_only()
@@ -2694,6 +2706,8 @@ class CrowEyesImageViewer(tb.Window):
             except ValueError:
                 self.index = 0 if self.folder_files else -1
         self._select_list_index(self.index)
+        self._playlist_selection = {i for i,p in enumerate(self.folder_files) if p in selected}
+        self._restore_playlist_selection_visuals()
         self._queue_thumbs_priority()
         self._update_info()
 
@@ -3026,6 +3040,12 @@ class CrowEyesImageViewer(tb.Window):
             for label, suffix in (("PNG", ".png"), ("JPEG", ".jpg"), ("WebP", ".webp"), ("BMP", ".bmp"), ("TIFF", ".tiff")):
                 formats.add_command(label=label, command=lambda ext=suffix: self.save_as_format(ext))
             menu.add_cascade(label="다른 형식으로 저장", menu=formats)
+        self.add_visibility_commands(menu, paths)
+        sorting=tk.Menu(menu,tearoff=False);self._fill_sort_menu(sorting)
+        viewing=tk.Menu(menu,tearoff=False);self._fill_view_menu(viewing)
+        menu.add_separator()
+        menu.add_cascade(label='정렬',menu=sorting)
+        menu.add_cascade(label='보기',menu=viewing)
         try:
             menu.tk_popup(event.x_root, event.y_root)
         finally:
@@ -3851,6 +3871,12 @@ class CrowEyesImageViewer(tb.Window):
         if not path.exists():
             messagebox.showerror("오류", f"찾을 수 없습니다:\n{path}")
             return
+        from croweyes_files import is_hidden
+        if path.is_file() and is_hidden(path):
+            # An explicit Open/Explorer request is intentional. Keep the file
+            # and the folder browser in sync; never silently unhide the file.
+            self.settings['show_hidden_files'] = True
+            self._show_hidden_var.set(True)
 
         if path.is_dir():
             self.navigate_to_folder(path)
@@ -3871,6 +3897,7 @@ class CrowEyesImageViewer(tb.Window):
         self._thumb_loaded.clear()
 
         self.current_folder = path.parent
+        self._opened_folders = [path.parent]
         self._record_folder_history(path.parent)
         # Immediate single-item playlist so UI is responsive
         self.folder_files = [path]
@@ -4182,6 +4209,8 @@ class CrowEyesImageViewer(tb.Window):
         menu.add_cascade(label="다른 형식으로 저장", menu=formats)
         menu.add_command(label="인쇄 미리보기\tCtrl+P", command=self.print_current_image)
         menu.add_command(label="전체화면\tF11", command=self.toggle_image_fullscreen)
+        current = [self.folder_files[self.index]] if 0 <= self.index < len(self.folder_files) else []
+        self.add_visibility_commands(menu, current)
         menu.add_separator()
         menu.add_command(label="파일 복사\tCtrl+C", command=self.copy_selected_files)
         menu.add_command(label="이름 바꾸기\tF2", command=self.rename_selected_file)
@@ -4947,7 +4976,7 @@ class CrowEyesImageViewer(tb.Window):
         if hasattr(self, "navigation_bar"):
             self.navigation_bar.destroy()
         self._icons = CrowEyesIconSet(self, self._theme())
-        self.iconphoto(True, self._icons["app"])
+        self._apply_window_icon()
         self._navigation_buttons = []
         self.toolbar = CrowEyesToolbar(self, self)
         self.toolbar.grid(row=0, column=0, sticky="ew")
@@ -6224,6 +6253,8 @@ class CrowEyesImageViewer(tb.Window):
     def open_folders(self, folders: List[Path]) -> None:
         if not folders:
             return
+        self._opened_folders = list(folders)
+        show_hidden = bool(self.settings.get('show_hidden_files', False))
         try:
             primary = folders[0].expanduser().resolve()
             if not self._history_navigation:
@@ -6256,13 +6287,13 @@ class CrowEyesImageViewer(tb.Window):
                 if not folder.is_dir():
                     continue
                 clean_folders.append(folder)
-                for path in list_image_paths_fast(folder):
+                for path in list_image_paths_fast(folder, show_hidden):
                     resolved_path = Path(os.path.abspath(os.fspath(path)))
                     key = str(resolved_path)
                     if key not in seen:
                         seen.add(key)
                         resolved.append(resolved_path)
-            subdirs = list_subdirs(clean_folders[0]) if clean_folders else []
+            subdirs = list_subdirs(clean_folders[0], show_hidden) if clean_folders else []
             if generation == self._playlist_gen:
                 self._scan_results[generation] = (self._sorted(resolved), clean_folders, subdirs)
 
@@ -6298,14 +6329,16 @@ class CrowEyesImageViewer(tb.Window):
             return
         self.status.configure(text=f"플레이리스트 구성 중…  {folder}")
 
+        show_hidden = bool(self.settings.get('show_hidden_files', False))
         def worker() -> None:
-            files = self._sorted(list_image_paths_fast(folder))
+            files = self._sorted(list_image_paths_fast(folder, show_hidden))
             priority = Path(os.path.abspath(os.fspath(prioritize)))
             normalized = [Path(os.path.abspath(os.fspath(item))) for item in files]
-            if priority not in normalized:
+            from croweyes_files import is_hidden
+            if priority not in normalized and (show_hidden or not is_hidden(priority)):
                 normalized.append(priority)
                 normalized = self._sorted(normalized)
-            subdirs = list_subdirs(folder)
+            subdirs = list_subdirs(folder, show_hidden)
             if generation == self._playlist_gen:
                 self._scan_results[generation] = (normalized, priority, subdirs)
 

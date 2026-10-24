@@ -4,6 +4,7 @@ import tkinter as tk
 from tkinter import ttk
 from croweyes_inline import InlineEditorMixin
 from croweyes_dock import DockMixin, ModeSwitch
+from croweyes_browser import FileBrowserMixin
 
 
 def core(viewer):
@@ -53,8 +54,8 @@ class WorkspaceToolbar(ttk.Frame):
         m.add_command(label='슬라이드쇼 재생 / 정지',command=v.toggle_slideshow,accelerator='F5')
         add(m,'선택 이미지 2 / 4장 비교',v.compare_selected)
         m.add_separator()
-        for name in c.LIST_MODES:
-            m.add_radiobutton(label=c.LIST_MODE_LABELS[name],variable=v._list_mode_var,value=name,command=lambda n=name:v.set_list_mode(n))
+        viewing=tk.Menu(m,tearoff=False);v._fill_view_menu(viewing)
+        m.add_cascade(label='파일목록 보기',menu=viewing)
         m.add_separator()
         m.add_checkbutton(label='파일 목록 패널',variable=v._playlist_panel_var,command=v.toggle_playlist_panel)
         m.add_checkbutton(label='사진 정보 패널',variable=v._info_panel_var,command=v.toggle_info_panel)
@@ -80,10 +81,8 @@ class WorkspaceToolbar(ttk.Frame):
             if index:m.add_separator()
             for label,cmd in group:add(m,label,cmd)
         m.add_separator()
-        for name in c.SORT_KEYS:
-            m.add_radiobutton(label=c.SORT_LABELS[name],variable=v._sort_var,value=name,command=lambda n=name:v.set_sort(n))
-        m.add_radiobutton(label='오름차순',variable=v._sort_desc_var,value=False,command=lambda:v.set_sort_direction(False))
-        m.add_radiobutton(label='내림차순',variable=v._sort_desc_var,value=True,command=lambda:v.set_sort_direction(True))
+        sorting=tk.Menu(m,tearoff=False);v._fill_sort_menu(sorting)
+        m.add_cascade(label='정렬',menu=sorting)
         m=menu('도구')
         for label,cmd in [('글자 인식 (OCR)',v.ocr_dialog),('영역 글자 인식',v.ocr_region),('정보 색인 · 촬영일 + OCR',v.index_all),('C2PA 출처 확인',v.provenance_dialog),('EXIF·GPS·색상 정보',v.metadata_dialog)]:add(m,label,cmd)
         m=menu('설정')
@@ -124,7 +123,7 @@ class WorkspaceToolbar(ttk.Frame):
         for i,b in enumerate(buttons):b.grid(row=i//cols,column=i%cols,padx=2,pady=3,sticky='ew')
 
 
-class WorkspaceMixin(DockMixin,InlineEditorMixin):
+class WorkspaceMixin(FileBrowserMixin,DockMixin,InlineEditorMixin):
     def __init__(self,*args,**kwargs):
         self._workspace_mode='viewer'
         self._editor_panel=None
@@ -169,6 +168,7 @@ class WorkspaceMixin(DockMixin,InlineEditorMixin):
 
     def _apply_theme(self):
         super()._apply_theme()
+        self._style_browser_menus()
         def chrome(widget,frame_style,label_style):
             if isinstance(widget,ttk.Frame):widget.tk.call(widget._w,'configure','-style',frame_style)
             elif isinstance(widget,ttk.Label):widget.tk.call(widget._w,'configure','-style',label_style)

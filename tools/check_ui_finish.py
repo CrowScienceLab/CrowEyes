@@ -72,7 +72,7 @@ generation=v._playlist_gen;v._set_content_filter('off');assert v._playlist_gen==
 # Deliberately hold a folder scan while toggling: image enumeration must survive.
 from threading import Event
 started=Event();release=Event()
-def delayed_scan(path):
+def delayed_scan(path, show_hidden=False):
  started.set();release.wait(3)
  return sorted(folder.glob('*.png'))
 with patch.object(m,'list_image_paths_fast',delayed_scan):

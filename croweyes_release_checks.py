@@ -149,6 +149,17 @@ def run_workspace(viewer_type,report_path):
             viewer._on_motion(SimpleNamespace(x=viewer.canvas.winfo_width()/2,y=viewer.canvas.winfo_height()/2));pump(100)
             assert viewer._pixel_swatch.winfo_ismapped()
             assert viewer._pixel_swatch.itemcget('color','fill') in viewer.status.cget('text')
+            # 2.1 packaged integration: native attributes, menus and list refresh.
+            assert viewer._browser_sort_menu.index('end') is not None
+            assert viewer._browser_view_menu.index('end') is not None
+            from croweyes_files import is_hidden
+            hidden_sample=viewer.folder_files[-1]
+            viewer.change_hidden([hidden_sample],True);pump(500)
+            assert is_hidden(hidden_sample) and hidden_sample not in viewer.folder_files
+            viewer._show_hidden_var.set(True);viewer.toggle_show_hidden();pump(500)
+            assert hidden_sample in viewer.folder_files
+            viewer.change_hidden([hidden_sample],False);pump(500)
+            assert not is_hidden(hidden_sample)
             viewer._on_close();viewer=None
             assert not errors,errors
         results=dict(status='PASS',checks=['frozen viewer/editor','state retention','shared file list','inline highlight and undo/redo','six menus','800x600 bounds','breadcrumb links and four action icons','Ctrl/Shift grid events','no canvas resize on workspace switch','four-column default','fitted settings without scrollbars','small internal OCR/index/filter cards','native OCR cursor in frozen build','plain breadcrumb','drag selection and strong border','print icon','single status pixel display','grid scroll boundary','no heavy startup imports','real bundled filter ON/OFF closes dialog','immediate original thumbnails on OFF','one-page AI result','pixel swatch','four navigation icons','outlined bold brand/font-matched logo'],callback_errors=errors)

@@ -55,8 +55,9 @@ out.save(folder/'annotations.png')
 assert inspect(ROOT/'test-assets/CrowEyes_C2PA_50pct_sample.jpg')['validation']=='정상'
 spec=importlib.util.spec_from_file_location('croweyes_v20',ROOT/'CrowEyes_Image_Viewer_2.0.py')
 app=importlib.util.module_from_spec(spec);sys.modules[spec.name]=app;spec.loader.exec_module(app)
-assert app.APP_VERSION=='2.0.0' and app.is_newer_version('v2.0.0','1.9')
-assert not app.is_newer_version('v2.0.0')
+version=json.loads((ROOT/'version.json').read_text())['version']
+assert app.APP_VERSION==version and app.is_newer_version('v'+version,'1.9')
+assert not app.is_newer_version('v'+version)
 app.SETTINGS_PATH=folder/'settings.json'
 app.DEFAULT_SETTINGS['auto_check_updates']=False
 with patch.object(app.CrowEyes20,'_auto_register_file_associations',lambda self:None):

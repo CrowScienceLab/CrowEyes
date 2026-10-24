@@ -14,8 +14,11 @@ function AwaitOperation($Operation,$ResultType) {
     $task.Wait()
     return $task.Result
 }
-$file=AwaitOperation ([Windows.Storage.StorageFile]::GetFileFromPathAsync($ImagePath)) ([Windows.Storage.StorageFile])
-$stream=AwaitOperation ($file.OpenAsync([Windows.Storage.FileAccessMode]::Read)) ([Windows.Storage.Streams.IRandomAccessStream])
+# The app already holds an authorized local bitmap. StorageFile path brokerage
+# can reject that temporary path in restricted desktop environments. Decode a
+# managed read-only memory stream instead; no permissions or policies change.
+$memory=[IO.MemoryStream]::new([IO.File]::ReadAllBytes($ImagePath),$false)
+$stream=[System.IO.WindowsRuntimeStreamExtensions]::AsRandomAccessStream($memory)
 try {
     $decoder=AwaitOperation ([Windows.Graphics.Imaging.BitmapDecoder]::CreateAsync($stream)) ([Windows.Graphics.Imaging.BitmapDecoder])
     $bitmap=AwaitOperation ($decoder.GetSoftwareBitmapAsync()) ([Windows.Graphics.Imaging.SoftwareBitmap])
@@ -23,4 +26,4 @@ try {
     if (-not $engine) { throw 'OCR 언어가 설치되지 않았습니다. Windows 언어 옵션에서 한국어 또는 영어 OCR을 설치하세요.' }
     $result=AwaitOperation ($engine.RecognizeAsync($bitmap)) ([Windows.Media.Ocr.OcrResult])
     Write-Output $result.Text
-} finally { $stream.Dispose() }
+} finally { $stream.Dispose(); $memory.Dispose() }

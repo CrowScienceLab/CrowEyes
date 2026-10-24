@@ -12,7 +12,6 @@ for name in names:
     path=ROOT/'tools'/name
     source=path.read_text(encoding='utf-8').replace('CrowEyes_Image_Viewer_1.9e.py','CrowEyes_Image_Viewer_2.0.py')
     if name=='check_slideshow_toolbar.py':
-        source=source.replace("== 36 for button in viewer._toolbar_buttons", "== 32 for button in viewer._toolbar_buttons")
         source=source.replace('viewer._icons["eye"].width() == 48','viewer._icons["eye"].width() == __import__("tkinter.font",fromlist=["Font"]).Font(root=viewer,family="Segoe UI",size=20,weight="bold").metrics("linespace")')
         source=source.replace('viewer._icons["eye"].height() == 48','viewer._icons["eye"].height() == __import__("tkinter.font",fromlist=["Font"]).Font(root=viewer,family="Segoe UI",size=20,weight="bold").metrics("linespace")')
         source=source.replace('all(re.search(r"[가-힣]", str(button.cget("text"))) for button in viewer._toolbar_buttons)','all(not button.cget("text") for button in viewer._toolbar_buttons)')
