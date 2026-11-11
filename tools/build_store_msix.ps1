@@ -21,7 +21,7 @@ if (Test-Path -LiteralPath $layout) {
     $resolvedLayout = (Resolve-Path -LiteralPath $layout).Path
     $expectedLayout = [IO.Path]::GetFullPath((Join-Path $root 'store\layout'))
     if ($resolvedLayout -ne $expectedLayout) { throw 'Unexpected Store layout path' }
-    $archiveRoot = 'D:\App coding\_archive'
+    $archiveRoot = Join-Path $root 'tmp\store-layout-archive'
     New-Item -ItemType Directory -Path $archiveRoot -Force | Out-Null
     $archiveLayout = Join-Path $archiveRoot ("CrowEyes-store-layout-" + (Get-Date -Format 'yyyyMMdd-HHmmss') + '-' + [guid]::NewGuid().ToString('N'))
     Move-Item -LiteralPath $resolvedLayout -Destination $archiveLayout

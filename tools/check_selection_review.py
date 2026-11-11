@@ -81,7 +81,7 @@ for method in (v.adult_filter_dialog,lambda:v._text('정보 색인 결과','등�
  assert win.winfo_reqheight()<=win.winfo_height();win.destroy()
 assert not errors,errors
 v._on_close()
-print('PASS: plain breadcrumb hover, 20 bold outlined brand, print order, immediate AI inspection, internal adult/OCR/index cards, native custom OCR cursor, high contrast selection, actual drag rectangle multi-selection, 800x600 fit')
+print('PASS: plain breadcrumb hover, 20 normal outlined brand, print order, immediate AI inspection, internal adult/OCR/index cards, native custom OCR cursor, high contrast selection, actual drag rectangle multi-selection, 800x600 fit')
 
 
 

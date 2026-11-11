@@ -49,7 +49,7 @@ with zipfile.ZipFile(release/f'CrowEyes_{data["store_version"]}_x64.msix') as zi
 
 (release/'SHA256SUMS.txt').write_text(''.join(value['sha256']+'  '+name+'\n' for name,value in sorted(checks.items())),encoding='utf-8')
 sizes={}
-for label,path in [('1.9e',ROOT/'dist/v1.9e/CrowEyes'),(version,distribution)]:
+for label,path in [('2.0.0',ROOT/'dist/review-v2.0.0/CrowEyes'),(version,distribution)]:
     if path.exists():sizes[label]=sum(p.stat().st_size for p in path.rglob('*') if p.is_file())
 report=dict(version=data,status='PASS',core_bytes=sizes,artifacts=checks)
 if len(sys.argv)>1:

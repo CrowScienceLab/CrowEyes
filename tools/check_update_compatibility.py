@@ -1,43 +1,21 @@
-"""Exercise the actual old and patched update comparators without starting Tk."""
-import ast
-import re
+"""Keep legacy upgrade detection covered without shipping an obsolete application."""
+import ast,json,re
 from pathlib import Path
 from typing import Tuple
-
-ROOT = Path(__file__).resolve().parents[1]
-
-
-def load_comparator(path):
-    tree = ast.parse(path.read_text(encoding="utf-8"))
-    nodes = [node for node in tree.body if (
-        isinstance(node, ast.FunctionDef)
-        and node.name in {"semantic_version", "is_newer_version"}
-    ) or (
-        isinstance(node, ast.Assign)
-        and any(isinstance(target, ast.Name) and target.id in {
-            "APP_VERSION", "APP_UPDATE_VERSION"
-        } for target in node.targets)
-    )]
-    namespace = {"re": re, "Tuple": Tuple}
-    exec(compile(ast.Module(body=nodes, type_ignores=[]), str(path), "exec"), namespace)
-    return namespace
-
-
-old = load_comparator(ROOT / "tools/fixtures/legacy_update_comparator.py")
-new = load_comparator(ROOT / "CrowEyes_Image_Viewer_1.9e.py")
-assert old["semantic_version"]("v1.9e") == old["semantic_version"]("1.9")
-assert not old["is_newer_version"]("v1.9e", "1.9")
-for version in ("1.8", "1.9", "1.9d", "1.9e"):
-    assert old["is_newer_version"]("v2.0.0", version)
-    assert new["is_newer_version"]("v2.0.0", version)
-    assert old["is_newer_version"]("v1.9.1", version), version
-    assert new["is_newer_version"]("v1.9.1", version), version
-assert new["APP_VERSION"] == "1.9e"
-assert new["APP_UPDATE_VERSION"] == "1.9.1"
-assert not new["is_newer_version"]("v1.9.1")
-assert not new["is_newer_version"]("v1.9e")
-assert new["is_newer_version"]("v1.9.2")
-assert new["is_newer_version"]("v1.10")
-source = (ROOT / "CrowEyes_Image_Viewer_1.9e.py").read_text(encoding="utf-8")
-assert "is_newer_version(tag, APP_UPDATE_VERSION)" in source
-print("PASS: reproduced legacy 1.9e failure; numeric tag detects upgrade; patched client does not repeat it")
+ROOT=Path(__file__).resolve().parents[1]
+current=json.loads((ROOT/'version.json').read_text())['version']
+def comparator(path,version):
+    nodes=[n for n in ast.parse(path.read_text(encoding='utf-8')).body if isinstance(n,ast.FunctionDef) and n.name in {'semantic_version','is_newer_version'}]
+    values={'re':re,'Tuple':Tuple,'APP_VERSION':version,'APP_UPDATE_VERSION':version}
+    exec(compile(ast.Module(body=nodes,type_ignores=[]),str(path),'exec'),values)
+    return values
+old=comparator(ROOT/'tools/fixtures/legacy_update_comparator.py','1.9')
+new=comparator(ROOT/'CrowEyes_Image_Viewer_2.0.py',current)
+assert old['semantic_version']('v1.9e')==old['semantic_version']('1.9')
+assert not old['is_newer_version']('v1.9e','1.9')
+for previous in ('1.8','1.9','1.9d','1.9e','2.0.0','2.1.0'):
+    assert old['is_newer_version']('v'+current,previous)
+    assert new['is_newer_version']('v'+current,previous)
+assert not new['is_newer_version']('v'+current)
+assert not new['is_newer_version']('v1.9e')
+print('PASS: legacy numeric client and current comparator both detect the current release; no obsolete application required')

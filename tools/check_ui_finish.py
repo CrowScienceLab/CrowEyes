@@ -28,7 +28,7 @@ assert [b._croweyes_action for b in v._navigation_buttons]==['previous','next','
 assert v._breadcrumb_targets[0].cget('text')=='내 컴퓨터'
 assert all(w.cget('fg')=='#79BEFF' for w in v._breadcrumb_targets)
 font=Font(root=v,font=m.ttk.Style(v).lookup('Brand.TLabel','font'))
-assert font.actual('size')==20 and font.actual('weight')=='bold'
+assert font.actual('size')==20 and font.actual('weight')=='normal'
 assert v._icons['eye'].height()==font.metrics('linespace')
 assert Font(root=v,family='Segoe UI',size=9).measure(v._short_folder_name('아주 긴 한글 폴더 이름입니다'))<=64
 v._on_motion(SimpleNamespace(x=v.canvas.winfo_width()/2,y=v.canvas.winfo_height()/2));pump()
@@ -131,4 +131,4 @@ from PIL import ImageTk
 ImageTk.getimage(v._icons['brand_wordmark']).save(ROOT/'tmp/brand-wordmark.png')
 assert not errors,errors
 v._on_close()
-print('PASS: real filter setter closes ON/OFF card, immediate cached OFF thumbnails, selection/scroll widgets preserved, stale safety results ignored, no-op repeat, pixel color swatch, 20 bold outlined brand/logo height, four navigation actions, blue links, filter changes preserve active folder scan, 18 geometry/theme/mode UI bounds and one-page AI summaries')
+print('PASS: real filter setter closes ON/OFF card, immediate cached OFF thumbnails, selection/scroll widgets preserved, stale safety results ignored, no-op repeat, pixel color swatch, 20 normal outlined brand/logo height, four navigation actions, blue links, filter changes preserve active folder scan, 18 geometry/theme/mode UI bounds and one-page AI summaries')

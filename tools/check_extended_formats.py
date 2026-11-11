@@ -14,7 +14,7 @@ from PIL import Image
 
 
 ROOT = Path(__file__).resolve().parents[1]
-SOURCE = ROOT / "CrowEyes_Image_Viewer_1.9e.py"
+SOURCE = ROOT / "CrowEyes_Image_Viewer_2.0.py"
 spec = importlib.util.spec_from_file_location("croweyes_v17", SOURCE)
 assert spec and spec.loader
 app = importlib.util.module_from_spec(spec)
@@ -180,7 +180,7 @@ def main() -> None:
         check_psd(normal, "normal PSD")
         check_psd(large, "large PSD")
         check_psd_thumbnail(normal)
-    print("PASS v1.9e extended formats, print layout, and raster regression checks")
+    print("PASS current extended formats, print layout, and raster regression checks")
 
 
 if __name__ == "__main__":
