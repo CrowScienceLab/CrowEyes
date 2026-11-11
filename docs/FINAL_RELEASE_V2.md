@@ -1,6 +1,6 @@
 # CrowEyes 2.0 최종 로컬 배포 준비 · 2026-10-12
 
-상태: UI 수정, 실행 검증, Setup/Portable/MSIX 생성 완료. GitHub 및 Microsoft Store 업로드는 수행하지 않았습니다.
+최신 상태(2026-10-12): GitHub v2.0.0 공개 완료, Microsoft Store 2.0.0.0 심사 제출 완료(전처리 진행). 아래는 공개 전 로컬 검증 기록입니다. 최신 배포·인수인계는 DEVELOPMENT_HANDOFF_2026-10-12.md와 store/MICROSOFT_STORE_SUBMISSION.md를 참고하세요.
 
 ## 최종 변경
 
