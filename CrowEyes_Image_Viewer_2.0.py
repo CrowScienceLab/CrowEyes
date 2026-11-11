@@ -765,6 +765,8 @@ def print_image_windows(
     image_factory: Callable[[int, int], Image.Image], owner_hwnd: int, document_name: str,
     orientation: str = "portrait", paper: str = "A4", scale_mode: str = "fit",
     printer_name: str = "", copies: int = 1, output_path: Optional[str] = None,
+    scale_percent=100, margins_mm=(10,10,10,10), tiles=1, source_dpi=96,
+    physical_size=None, geometry_only=False,
 ) -> bool:
     """Print directly with app-supplied settings and no second preview dialog."""
     if os.name != "nt":
@@ -838,10 +840,12 @@ def print_image_windows(
         ) < 0:
             raise OSError("프린터 설정을 초기화하지 못했습니다.")
         devmode = ctypes.cast(devmode_ptr, ctypes.POINTER(DEVMODEW))
-        devmode.contents.dmFields |= 0x00000001 | 0x00000002 | 0x00000100
+        devmode.contents.dmFields |= 0x00000001 | 0x00000002 | 0x00000100 | 0x10 | 0x1000
         devmode.contents.dmOrientation = 2 if orientation == "landscape" else 1
-        devmode.contents.dmPaperSize = 1 if paper == "Letter" else 9
-        devmode.contents.dmCopies = copies
+        devmode.contents.dmPaperSize = {"Letter":1,"A4":9,"A3":8,"A2":66}.get(paper,9)
+        devmode.contents.dmScale = 100
+        devmode.contents.dmDuplex = 1
+        devmode.contents.dmCopies = 1
         if winspool.DocumentPropertiesW(
             owner_hwnd, handle, printer_name, devmode_ptr, devmode_ptr, 0x0000000A,
         ) < 0:
@@ -855,23 +859,41 @@ def print_image_windows(
         dpi_y = max(1, int(gdi32.GetDeviceCaps(hdc, 90)))
         if printable_w <= 0 or printable_h <= 0:
             raise OSError("프린터의 인쇄 가능 영역이 올바르지 않습니다.")
-        image = image_factory(printable_w, printable_h)
+        physical_w=int(gdi32.GetDeviceCaps(hdc,110))
+        physical_h=int(gdi32.GetDeviceCaps(hdc,111))
+        offset_x=int(gdi32.GetDeviceCaps(hdc,112))
+        offset_y=int(gdi32.GetDeviceCaps(hdc,113))
+        geometry=dict(paper=(physical_w/dpi_x*25.4,physical_h/dpi_y*25.4),
+                      hardware=(offset_x/dpi_x*25.4,offset_y/dpi_y*25.4,
+                                max(0,physical_w-offset_x-printable_w)/dpi_x*25.4,
+                                max(0,physical_h-offset_y-printable_h)/dpi_y*25.4),
+                      dpi=(dpi_x,dpi_y),offset=(offset_x,offset_y))
+        if geometry_only:return geometry
+        from croweyes_printing import make_plan,device_rect,tile_bitmap
+        image = image_factory(printable_w*(2 if tiles>1 else 1),printable_h*(2 if tiles==4 else 1))
         if image.mode == "RGBA":
             background = Image.new("RGB", image.size, "white")
             background.paste(image, mask=image.getchannel("A"))
             image = background
         else:
             image = image.convert("RGB")
-        print_rect = calculate_print_rect(image.size, (printable_w, printable_h), scale_mode, (dpi_x, dpi_y))
+        plan=make_plan(image.size,geometry['paper'],margins_mm,mode=scale_mode,
+                       percent=scale_percent,source_dpi=source_dpi,tiles=tiles,
+                       physical_size=physical_size,hardware=geometry['hardware'])
         doc = DOCINFOW(ctypes.sizeof(DOCINFOW), document_name, output_path, None, 0)
         if gdi32.StartDocW(hdc, ctypes.byref(doc)) <= 0:
             raise OSError("프린터가 인쇄 작업을 시작하지 못했습니다.")
         started = True
         try:
-            if gdi32.StartPage(hdc) <= 0:
-                raise OSError("프린터가 페이지 출력을 시작하지 못했습니다.")
-            ImageWin.Dib(image).draw(hdc, print_rect)
-            if gdi32.EndPage(hdc) <= 0 or gdi32.EndDoc(hdc) <= 0:
+            for _copy in range(copies):
+                for tile in plan.tiles:
+                    if gdi32.StartPage(hdc) <= 0:
+                        raise OSError("프린터가 페이지 출력을 시작하지 못했습니다.")
+                    bitmap=tile_bitmap(image,tile)
+                    if bitmap is not None:ImageWin.Dib(bitmap).draw(hdc,device_rect(tile,geometry['dpi'],geometry['offset']))
+                    if gdi32.EndPage(hdc) <= 0:
+                        raise OSError("프린터가 페이지 출력을 완료하지 못했습니다.")
+            if gdi32.EndDoc(hdc) <= 0:
                 raise OSError("프린터가 출력 작업을 완료하지 못했습니다.")
             started = False
         finally:
@@ -1079,9 +1101,8 @@ def is_microsoft_store_package() -> bool:
         return False
     import ctypes
     try:
-        length = ctypes.c_uint32(0)
-        result = ctypes.windll.kernel32.GetCurrentPackageFamilyName(ctypes.byref(length), None)
-        return result in (0, 122)  # ERROR_SUCCESS / ERROR_INSUFFICIENT_BUFFER
+        from croweyes_onboarding import package_family
+        return package_family().startswith('170231F2.CrowEyes_')
     except (AttributeError, OSError):
         return False
 
@@ -1330,7 +1351,7 @@ class CrowEyesIconSet:
             self.images[name] = self._render(name, 24)
             self.images["toolbar_" + name] = self._render(name, 36, toolbar=True)
         from tkinter.font import Font
-        self.images["eye"] = self._load_brand_eye(Font(root=root,family="Segoe UI",size=20,weight="bold").metrics("linespace"))
+        self.images["eye"] = self._load_brand_eye(Font(root=root,family="Segoe UI",size=20,weight="normal").metrics("linespace"))
         self.images["brand_wordmark"] = self._load_brand_wordmark()
         self.images["eye_large"] = self._load_brand_eye(88)
         self.images["folder_large"] = self._render("folder", 52)
@@ -1348,10 +1369,10 @@ class CrowEyesIconSet:
     def _load_brand_wordmark(self) -> ImageTk.PhotoImage:
         from PIL import ImageFont
         from tkinter.font import Font
-        metrics=Font(root=self.root,family='Segoe UI',size=20,weight='bold')
+        metrics=Font(root=self.root,family='Segoe UI',size=20,weight='normal')
         scale=4
         pixel_size=round(20*float(self.root.tk.call('tk','scaling'))*scale)
-        font=ImageFont.truetype(str(Path(os.environ.get('WINDIR','C:/Windows'))/'Fonts/segoeuib.ttf'),pixel_size)
+        font=ImageFont.truetype(str(Path(os.environ.get('WINDIR','C:/Windows'))/'Fonts/segoeui.ttf'),pixel_size)
         width=metrics.measure('CrowEyes')+4;height=metrics.metrics('linespace')
         bitmap=Image.new('RGBA',(width*scale,height*scale))
         fg=self._rgb(self.colors['fg']);bg=self._rgb(self.colors['toolbar'])
@@ -2103,139 +2124,7 @@ class ContextControlBar(ttk.Frame):
         viewer._anim_btn.pack(side=tk.LEFT, padx=2)
 
 
-class PrintPreview(tk.Toplevel):
-    """One-page preview using the same layout calculation as actual printing."""
-
-    PAPER_MM = {"A4": (210, 297), "Letter": (216, 279)}
-
-    def __init__(self, viewer: "CrowEyesImageViewer") -> None:
-        super().__init__(viewer)
-        self.viewer = viewer
-        self.title("인쇄 미리보기 · CrowEyes")
-        self.geometry("1020x720")
-        self.minsize(820, 600)
-        self.transient(viewer)
-        self.printer_names = enumerate_printer_names()
-        default_printer = get_default_printer_name()
-        remembered_printer = str(viewer.settings.get("print_printer", ""))
-        selected_printer = remembered_printer if remembered_printer in self.printer_names else default_printer
-        if selected_printer not in self.printer_names and self.printer_names:
-            selected_printer = self.printer_names[0]
-        self.printer_var = tk.StringVar(value=selected_printer)
-        self.paper_var = tk.StringVar(value=str(viewer.settings.get("print_paper", "A4")))
-        self.orientation_var = tk.StringVar(value=str(viewer.settings.get("print_orientation", "portrait")))
-        self.scale_var = tk.StringVar(value=str(viewer.settings.get("print_scale_mode", "fit")))
-        self.copies_var = tk.IntVar(value=max(1, int(viewer.settings.get("print_copies", 1))))
-        self.print_to_file_var = tk.BooleanVar(value=False)
-        self.save_defaults_var = tk.BooleanVar(value=False)
-        self.preview_photo: Optional[ImageTk.PhotoImage] = None
-
-        body = ttk.Frame(self, padding=14, style="Panel.TFrame")
-        body.pack(fill=tk.BOTH, expand=True)
-        body.columnconfigure(0, weight=1)
-        body.rowconfigure(0, weight=1)
-        self.preview = tk.Canvas(body, bg="#171A1E", highlightthickness=0)
-        self.preview.grid(row=0, column=0, sticky="nsew", padx=(0, 14))
-        self.preview.bind("<Configure>", lambda _e: self.after_idle(self.redraw_preview))
-
-        side = ttk.Frame(body, padding=18, style="Card.TFrame")
-        side.grid(row=0, column=1, sticky="ns")
-        ttk.Label(side, text="인쇄 설정", style="Title.TLabel").pack(anchor="w", pady=(0, 18))
-        self._field(side, "프린터")
-        printer = ttk.Combobox(
-            side, textvariable=self.printer_var, values=self.printer_names,
-            state="readonly", width=28,
-        )
-        printer.pack(fill=tk.X, pady=(0, 14))
-        self._field(side, "용지")
-        paper = ttk.Combobox(side, textvariable=self.paper_var, values=("A4", "Letter"), state="readonly", width=22)
-        paper.pack(fill=tk.X, pady=(0, 14))
-        self._field(side, "방향")
-        for text, value in (("세로", "portrait"), ("가로", "landscape")):
-            ttk.Radiobutton(side, text=text, variable=self.orientation_var, value=value, command=self.redraw_preview).pack(anchor="w")
-        self._field(side, "매수", top=14)
-        ttk.Spinbox(side, from_=1, to=999, textvariable=self.copies_var, width=8).pack(anchor="w")
-        self._field(side, "크기", top=14)
-        for text, value in (("페이지에 맞춤", "fit"), ("원본 크기 (96 DPI)", "actual")):
-            ttk.Radiobutton(side, text=text, variable=self.scale_var, value=value, command=self.redraw_preview).pack(anchor="w")
-        paper.bind("<<ComboboxSelected>>", lambda _e: self.redraw_preview())
-
-        ttk.Checkbutton(side, text="파일로 출력 (.prn)", variable=self.print_to_file_var).pack(anchor="w", pady=(14, 0))
-        ttk.Checkbutton(
-            side, text="앱에서 인쇄 기본 설정 변경", variable=self.save_defaults_var,
-        ).pack(anchor="w", pady=(5, 0))
-        ttk.Separator(side).pack(fill=tk.X, pady=16)
-        ttk.Button(side, text="인쇄", style="Accent.TButton", command=self.do_print).pack(fill=tk.X, ipady=4)
-        ttk.Button(side, text="닫기", command=self.destroy).pack(fill=tk.X, pady=(8, 0))
-        self.after_idle(self.redraw_preview)
-
-    @staticmethod
-    def _field(parent: tk.Widget, text: str, top: int = 0) -> None:
-        ttk.Label(parent, text=text, style="Section.TLabel").pack(anchor="w", pady=(top, 5))
-
-    def _paper_size(self) -> Tuple[int, int]:
-        width, height = self.PAPER_MM[self.paper_var.get()]
-        if self.orientation_var.get() == "landscape":
-            width, height = height, width
-        return width, height
-
-    def redraw_preview(self) -> None:
-        if not self.winfo_exists() or self.viewer.display_image is None:
-            return
-        self.preview.delete("all")
-        cw, ch = max(320, self.preview.winfo_width()), max(320, self.preview.winfo_height())
-        paper_w, paper_h = self._paper_size()
-        scale = min((cw - 80) / paper_w, (ch - 70) / paper_h)
-        pw, ph = max(1, int(paper_w * scale)), max(1, int(paper_h * scale))
-        px, py = (cw - pw) // 2, (ch - ph) // 2
-        self.preview.create_rectangle(px + 7, py + 8, px + pw + 7, py + ph + 8, fill="#08090A", outline="")
-        self.preview.create_rectangle(px, py, px + pw, py + ph, fill="white", outline="#B9BDC3")
-        margin = max(8, int(min(pw, ph) * 0.055))
-        area_w, area_h = max(1, pw - margin * 2), max(1, ph - margin * 2)
-        image = self.viewer.display_image.copy()
-        rect = calculate_print_rect(image.size, (area_w, area_h), self.scale_var.get(), (96, 96))
-        left, top, right, bottom = rect
-        draw_w, draw_h = max(1, right - left), max(1, bottom - top)
-        visible_left, visible_top = max(0, left), max(0, top)
-        visible_right, visible_bottom = min(area_w, right), min(area_h, bottom)
-        if visible_right <= visible_left or visible_bottom <= visible_top:
-            return
-        rendered = image.resize((draw_w, draw_h), Image.Resampling.LANCZOS)
-        if left < 0 or top < 0 or right > area_w or bottom > area_h:
-            rendered = rendered.crop((visible_left - left, visible_top - top, visible_right - left, visible_bottom - top))
-        self.preview_photo = ImageTk.PhotoImage(rendered)
-        self.preview.create_image(px + margin + visible_left, py + margin + visible_top, image=self.preview_photo, anchor="nw")
-        self.preview.create_rectangle(px + margin, py + margin, px + pw - margin, py + ph - margin, outline="#D7DADF")
-
-    def do_print(self) -> None:
-        printer_name = self.printer_var.get().strip()
-        if not printer_name:
-            messagebox.showwarning("인쇄", "사용할 프린터를 선택해 주세요.", parent=self)
-            return
-        output_path: Optional[str] = None
-        if self.print_to_file_var.get():
-            chosen = filedialog.asksaveasfilename(
-                parent=self, title="인쇄 파일 저장", defaultextension=".prn",
-                filetypes=(("Printer output", "*.prn"), ("모든 파일", "*.*")),
-            )
-            if not chosen:
-                return
-            output_path = chosen
-        if self.save_defaults_var.get():
-            self.viewer.settings.update({
-                "print_printer": printer_name,
-                "print_paper": self.paper_var.get(),
-                "print_orientation": self.orientation_var.get(),
-                "print_scale_mode": self.scale_var.get(),
-                "print_copies": max(1, int(self.copies_var.get())),
-            })
-            save_settings(self.viewer.settings)
-        if self.viewer._print_with_options(
-            self.orientation_var.get(), self.paper_var.get(), self.scale_var.get(),
-            printer_name=printer_name, copies=max(1, int(self.copies_var.get())),
-            output_path=output_path, parent=self,
-        ):
-            self.destroy()
+from croweyes_print_ui import PrintPreview
 
 
 class CrowEyesImageViewer(tb.Window):
@@ -2429,13 +2318,25 @@ class CrowEyesImageViewer(tb.Window):
         else:
             self.navigate_to_computer()
 
-        if bool(self.settings.get("auto_register_associations", True)) and not self.settings.get("initial_associations_registered",False):
-            self.after(250, self._auto_register_file_associations)
-
-        if bool(self.settings.get("auto_check_updates", True)):
+        store_first_run=is_microsoft_store_package() and not self.settings.get('store_onboarding_complete',False)
+        if store_first_run:
+            from croweyes_onboarding import show_store_onboarding
+            self.after(350,lambda:show_store_onboarding(self))
+        elif not is_microsoft_store_package() and bool(self.settings.get("auto_register_associations", True)) and not self.settings.get("initial_associations_registered",False):
+            self.after(250,self._auto_register_file_associations)
+        if not store_first_run and bool(self.settings.get("auto_check_updates", True)):
             self.after(900, lambda: self.check_for_updates(manual=False))
 
         self.protocol("WM_DELETE_WINDOW", self._on_close)
+
+    def _native_owner(self, widget=None):
+        owner=(widget or self).winfo_id()
+        if os.name=='nt':
+            import ctypes
+            fn=ctypes.windll.user32.GetAncestor
+            fn.argtypes=[ctypes.c_void_p,ctypes.c_uint];fn.restype=ctypes.c_void_p
+            return int(fn(owner,2) or owner)
+        return owner
 
     # ----- helpers: slideshow interrupt ------------------------------------
 
@@ -4658,7 +4559,7 @@ class CrowEyesImageViewer(tb.Window):
         style.configure("Viewer.TFrame", background=t["canvas_bg"], bordercolor=t["border"],
                         borderwidth=1, relief="solid")
         style.configure("TLabel", background=t["bg"], foreground=t["fg"], font=t["font"])
-        style.configure("Brand.TLabel", background=t["toolbar"], foreground=t["fg"], font=("Segoe UI", 20, "bold"))
+        style.configure("Brand.TLabel", background=t["toolbar"], foreground=t["fg"], font=("Segoe UI", 20, "normal"))
         style.configure("Logo.TLabel", background=t["toolbar"], foreground=t["accent"], font=("Segoe UI", 17, "bold"))
         style.configure("Product.TLabel", background=t["toolbar"], foreground=t["muted"], font=("Segoe UI Semibold", 8))
         style.configure("Crumb.TLabel", background=t["toolbar"], foreground=t["muted"], font=("Segoe UI", 8))
@@ -5592,7 +5493,7 @@ class CrowEyesImageViewer(tb.Window):
         """Build a print-resolution image with all visible transformations applied."""
         if self.display_image is None:
             raise ValueError("인쇄할 이미지가 없습니다.")
-        if self.source_type not in {"svg", "eps"} or self.source_path is None:
+        if self.source_type not in {"svg", "eps"} or self.source_path is None or getattr(self,'_annotation_ops',None):
             return self.display_image.copy()
 
         # A quarter-turn swaps source-space dimensions. Rendering the vector
@@ -5616,6 +5517,7 @@ class CrowEyesImageViewer(tb.Window):
         self, orientation: str, paper: str, scale_mode: str,
         printer_name: str = "", copies: int = 1, output_path: Optional[str] = None,
         parent: Optional[tk.Widget] = None,
+        scale_percent=100,margins_mm=(10,10,10,10),tiles=1,source_dpi=96,physical_size=None,
     ) -> bool:
         path = self.folder_files[self.index]
         self.status.configure(text=f"{printer_name or '기본 프린터'}로 인쇄 작업을 보내는 중…")
@@ -5632,11 +5534,13 @@ class CrowEyesImageViewer(tb.Window):
             if os.name == "nt":
                 import ctypes
 
-                owner = int(ctypes.windll.user32.GetParent(owner) or owner)
+                owner = self._native_owner(owner_widget)
             printed = print_image_windows(
                 self._image_for_print, owner, path.name,
                 orientation=orientation, paper=paper, scale_mode=scale_mode,
                 printer_name=printer_name, copies=copies, output_path=output_path,
+                scale_percent=scale_percent,margins_mm=margins_mm,tiles=tiles,
+                source_dpi=source_dpi,physical_size=physical_size,
             )
             self.status.configure(
                 text="인쇄 작업을 프린터로 보냈습니다" if printed else "인쇄를 취소했습니다"
@@ -5707,74 +5611,10 @@ class CrowEyesImageViewer(tb.Window):
         win.geometry(f"+{self.winfo_rootx() + 120}+{self.winfo_rooty() + 100}")
 
     def check_for_updates(self, manual: bool = False) -> None:
-        """Fetch GitHub's latest release off the Tk event thread."""
-        self._update_gen += 1
-        generation = self._update_gen
-        if manual:
-            self.status.configure(text="CrowEyes 업데이트를 확인하는 중…")
-
-        def worker() -> None:
-            try:
-                request = urllib.request.Request(
-                    GITHUB_RELEASES_URL,
-                    headers={"Accept": "application/vnd.github+json", "User-Agent": f"CrowEyes/{APP_VERSION}"},
-                )
-                with urllib.request.urlopen(request, timeout=12) as response:
-                    payload = response.read(2 * 1024 * 1024 + 1)
-                    if len(payload) > 2 * 1024 * 1024:
-                        raise ValueError("업데이트 응답이 너무 큽니다.")
-                    release = json.loads(payload.decode("utf-8"))
-                    if not isinstance(release, dict):
-                        raise ValueError("올바르지 않은 업데이트 응답입니다.")
-                    semantic_version(str(release.get("tag_name", "")))
-                self._update_results[generation] = (True, manual, release)
-            except Exception as exc:
-                self._update_results[generation] = (False, manual, str(exc))
-
-        threading.Thread(target=worker, name="CrowEyesUpdateCheck", daemon=True).start()
-        self.after(60, self._poll_update_check, generation)
-
-    def _poll_update_check(self, generation: int) -> None:
-        result = self._update_results.pop(generation, None)
-        if result is None:
-            if generation == self._update_gen:
-                self.after(60, self._poll_update_check, generation)
-            return
-        ok, manual, payload = result
-        if generation != self._update_gen:
-            return
-        self.settings["last_update_check"] = time.time()
-        save_settings(self.settings)
-        if not ok:
-            self.status.configure(text="업데이트 확인에 실패했습니다")
-            if manual:
-                messagebox.showerror("업데이트 확인", str(payload), parent=self)
-            return
-        release = payload
-        tag = str(release.get("tag_name", ""))
-        if not is_newer_version(tag, APP_UPDATE_VERSION):
-            self.status.configure(text=f"CrowEyes {APP_VERSION}이 최신 버전입니다")
-            if manual:
-                messagebox.showinfo("업데이트 확인", f"현재 버전 {APP_VERSION}이 최신입니다.", parent=self)
-            return
-        self.status.configure(text=f"새 버전 {tag}을 사용할 수 있습니다")
-        if is_microsoft_store_package():
-            if messagebox.askyesno(
-                "CrowEyes 업데이트",
-                f"새 버전 {tag}을 사용할 수 있습니다.\n\nMicrosoft Store에서 업데이트 페이지를 열까요?",
-                parent=self,
-            ):
-                try:
-                    os.startfile(MICROSOFT_STORE_URI)  # type: ignore[attr-defined]
-                except OSError:
-                    webbrowser.open(MICROSOFT_STORE_URL)
-            return
-        if messagebox.askyesno(
-            "CrowEyes 업데이트",
-            f"새 버전 {tag}을 사용할 수 있습니다.\n\n다운로드하고 SHA-256을 확인할까요?",
-            parent=self,
-        ):
-            self._show_update_download(release)
+        from croweyes_updates import UpdateCoordinator
+        if not hasattr(self,'_update_coordinator'):
+            self._update_coordinator=UpdateCoordinator(self)
+        self._update_coordinator.start(manual)
 
     def _installed_distribution(self) -> bool:
         if not getattr(sys, "frozen", False):

@@ -96,7 +96,7 @@ class WorkspaceToolbar(ttk.Frame):
         self._columns=None
         actions=[('open_image','열기','이미지 열기 (Ctrl+O)',v.open_file_dialog),('folder','폴더','폴더 열기',v.open_folder_dialog),('previous','이전','이전 사진',v.prev_image),('next','다음','다음 사진',v.next_image),('fit','화면맞춤','화면에 맞춤 (Ctrl+1)',v.fit_to_window),('zoom_out','축소','축소 (-)',lambda:v.zoom_by(1/1.15)),('actual','100%','100% 보기 (Ctrl+0)',v.actual_size),('zoom_in','확대','확대 (+)',lambda:v.zoom_by(1.15)),('play','재생','슬라이드쇼 (F5)',v.toggle_slideshow),('print','인쇄','현재 이미지 인쇄 (Ctrl+P)',v.print_current_image),('compare','비교','선택 이미지 2 / 4장 비교',v.compare_selected),('info','정보','사진 정보 패널 (F8)',v.toggle_info_panel)]
         if v._workspace_mode=='editor':
-            actions=[('undo','취소','실행 취소 (Ctrl+Z)',v.undo_edit),('redo','재실행','재실행 (Ctrl+Y)',v.redo_edit),('restore','원본','원본 복원',v.restore_original),('rotate_right','회전','오른쪽 회전',lambda:v.rotate(90)),('flip_h','좌우','좌우 반전',v.toggle_flip_h),('flip_v','상하','상하 반전',v.toggle_flip_v),('resize','크기','크기·비율 변경',lambda:v.select_edit_tool('크기·비율')),('copy','영역','영역 클립보드 복사',v.start_region_copy),('adjust','조정','밝기·대비',lambda:v.select_edit_tool('밝기·대비')),('annotation','주석','주석: 글자·화살표·사각형',v.annotation_dialog),('highlight','형광펜','형광펜',lambda:v.select_edit_tool('형광펜')),('mosaic','모자이크','모자이크',lambda:v.select_edit_tool('모자이크')),('compare','전후','편집 전후 비교',v.compare_before_after),('save','저장','사본 저장',v.quality_dialog)]
+            actions=[('undo','취소','실행 취소 (Ctrl+Z)',v.undo_edit),('redo','재실행','재실행 (Ctrl+Y)',v.redo_edit),('restore','원본','원본 복원',v.restore_original),('rotate_right','회전','오른쪽 회전',lambda:v.rotate(90)),('flip_h','좌우','좌우 반전',v.toggle_flip_h),('flip_v','상하','상하 반전',v.toggle_flip_v),('resize','크기','크기·비율 변경',lambda:v.select_edit_tool('크기·비율')),('copy','영역','영역 클립보드 복사',v.start_region_copy),('adjust','조정','밝기·대비',lambda:v.select_edit_tool('밝기·대비')),('print','인쇄','현재 편집 이미지 인쇄 (Ctrl+P)',v.print_current_image),('annotation','주석','주석: 글자·화살표·사각형',v.annotation_dialog),('highlight','형광펜','형광펜',lambda:v.select_edit_tool('형광펜')),('mosaic','모자이크','모자이크',lambda:v.select_edit_tool('모자이크')),('compare','전후','편집 전후 비교',v.compare_before_after),('save','저장','사본 저장',v.quality_dialog)]
         v._slide_btn=None
         for name,label,tip,command in actions:
             callback=command if name=='play' else v._action(command)
@@ -114,10 +114,10 @@ class WorkspaceToolbar(ttk.Frame):
         if not self.winfo_exists() or not self.viewer._toolbar_buttons:return
         buttons=self.viewer._toolbar_buttons
         tile=max(b.winfo_reqwidth() for b in buttons)+4
-        cols=max(1,min(14,max(1,width)//tile))
+        cols=max(1,min(15,max(1,width)//tile))
         if cols==self._columns:return
         self._columns=cols
-        rows=(14+cols-1)//cols
+        rows=(15+cols-1)//cols
         self.configure(height=max(48,rows*(max(b.winfo_reqheight() for b in buttons)+6),self.viewer._brand_label.winfo_reqheight(),self.viewer._brand_logo_label.winfo_reqheight(),self.mode_switch.winfo_reqheight())+8)
         for i in range(16):self.buttons.columnconfigure(i,minsize=tile if i<cols else 0)
         for i,b in enumerate(buttons):b.grid(row=i//cols,column=i%cols,padx=2,pady=3,sticky='ew')

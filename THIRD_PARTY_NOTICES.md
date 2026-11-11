@@ -31,3 +31,10 @@ class scores. Covered-body classes are not blocking classes.
 
 Other Python dependencies retain their respective licenses and notices in the
 packaged distribution where supplied by their wheels.
+
+## Python/WinRT
+
+- Project: <https://github.com/pywinrt/pywinrt>
+- Runtime 4.1.0; Windows.Services.Store/Foundation projection 4!10.0.28000.2957.
+- License: MIT, `licenses/pywinrt-MIT.txt`.
+- Used on demand for official Microsoft Store update availability.

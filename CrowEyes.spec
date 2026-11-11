@@ -16,6 +16,8 @@ msgcat = python_root / 'Library' / 'lib' / 'tcl8' / '8.5' / 'msgcat-1.6.1.tm'
 
 datas = [(str(msgcat), 'tcl8\\8.5')] if msgcat.is_file() else []
 datas += collect_data_files('ttkbootstrap')
+# PyWinRT projection tables must remain beside their namespace modules.
+datas += collect_data_files('winrt',includes=['**/*.pywinrt'])
 datas += [
     (str(Path('assets/cursors/region-ocr.cur').resolve()), 'assets/cursors'),
     (str(Path('assets/icons/croweyes-2.0.png').resolve()), 'assets/icons'),
