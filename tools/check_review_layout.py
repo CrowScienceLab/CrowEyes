@@ -28,7 +28,7 @@ pump(1200)
 assert v.list_mode=='icons'
 assert {int(w.grid_info()['column']) for w in v._icon_grid_order}=={0,1,2,3}
 font=v.tk.splitlist(v.style.lookup('Brand.TLabel','font'))
-assert '20' in font and 'bold' in font and str(v._brand_label.cget('style'))=='Brand.TLabel',font
+assert font==('Segoe UI','20','normal') and str(v._brand_label.cget('style'))=='Brand.TLabel',font
 assert not hasattr(v,'_dock_tabs') and not hasattr(v,'_info_tab') and not hasattr(v,'_pixel_label')
 v._activate_dock('정보');pump()
 info=v.info_text.get('1.0','end')
@@ -36,11 +36,13 @@ assert '출처' not in info and 'AI 생성' not in info,info
 v.set_workspace('editor');pump();assert not v._info_visible and len(v.paned.panes())==2
 for width,height in [(1280,850),(800,600)]:
     v.geometry(f'{width}x{height}');pump()
-    for name,b in v._dock_tab_buttons.items():
+    tasks=v._navigation_tasks.winfo_children()
+    assert {b._croweyes_action for b in tasks}=={'ai_generated','shield','ocr_region','index'}
+    for b in tasks:
         assert b.winfo_ismapped()
-        assert b.winfo_rootx()+b.winfo_width()<=v.winfo_rootx()+v.winfo_width(),name
-    assert len({b.winfo_y() for b in v._navigation_tasks.winfo_children()})==1
-    for action in (v.show_preferences,v.performance_dialog,v.extensions_dialog):
+        assert b.winfo_rootx()+b.winfo_width()<=v.winfo_rootx()+v.winfo_width(),b._croweyes_action
+    assert len({b.winfo_y() for b in tasks})==1
+    for action in (v.show_preferences,v.performance_dialog,v.extensions_dialog,v.show_shortcuts):
         action();pump()
         dialogs=[w for w in v.winfo_children() if w.__class__.__name__=='FittedDialog']
         assert len(dialogs)==1

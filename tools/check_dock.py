@@ -26,7 +26,11 @@ for _ in range(30):v._on_grid_wheel(SimpleNamespace(delta=-120))
 for _ in range(30):v._on_grid_wheel(SimpleNamespace(delta=120))
 pump();assert abs(v._grid_canvas.canvasy(0))<2
 for mode in m.LIST_MODES:
-    v.set_list_mode(mode);pump();assert v._list_mode_display_var.get()==m.LIST_MODE_LABELS[mode]
+    menu=v._browser_view_menu
+    entry=next(i for i in range(menu.index('end')) if menu.type(i)=='radiobutton' and menu.entrycget(i,'value')==mode)
+    assert menu.entrycget(entry,'label')==m.LIST_MODE_LABELS[mode]
+    menu.invoke(entry);pump()
+    assert v._list_mode_var.get()==v.list_mode==mode
 for page in ('정보','AI 생성 판단','성인 필터','도구'):
     v.select_dock(page);pump()
     assert v._dock_page==page and len(v.paned.panes())==3 and v._dock_pages[page].winfo_ismapped()
@@ -43,6 +47,16 @@ v.hide_info_panel();v.set_workspace('editor');pump()
 assert len(v.paned.panes())==2 and v._filmstrip is None
 v.toolbar.mode_switch.event_generate('<Button-1>',x=25,y=20);pump();assert v._workspace_mode=='viewer'
 v.toolbar.mode_switch.event_generate('<Button-1>',x=110,y=20);pump();assert v._workspace_mode=='editor'
+switch=v.toolbar.mode_switch
+switch.focus_force();pump()
+other_actions=[]
+v.prev_image=lambda:other_actions.append('previous image')
+v.next_image=lambda:other_actions.append('next image')
+v.toggle_animation=lambda:other_actions.append('toggle animation')
+for key,mode in [('Left','viewer'),('Right','editor'),('space','viewer')]:
+    switch.event_generate(f'<KeyPress-{key}>');pump()
+    assert v._workspace_mode==mode
+assert not other_actions, other_actions
 v.enter_image_fullscreen();pump();assert not v._navigation_tasks.winfo_ismapped()
 v.exit_image_fullscreen();pump();assert v._navigation_tasks.winfo_ismapped()
 for theme in ('bright_sky_blue','croweyes_dark'):v.set_ui_theme(theme);pump()

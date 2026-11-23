@@ -55,12 +55,14 @@ try:
  with patch('croweyes_onboarding.create_store_shortcut') as create:
   button(intro,'추가하지 않음').invoke();create.assert_not_called()
  assert v.settings['store_onboarding_complete'] and not v.settings['store_desktop_shortcut_requested']
- from croweyes_updates import UpdateCoordinator
- coordinator=UpdateCoordinator(v);coordinator.generation=7
- results={'github':dict(status='ok',version='2.1.0'),'store_feed':dict(status='error',error='test'), 'store_catalog':dict(status='ok')}
- with patch('croweyes_updates.messagebox.showinfo') as notice:
-  coordinator._poll(7,True,False,results,0)
-  assert '최신 버전입니다' not in notice.call_args.args[1]
+ with patch('croweyes_updates.fetch_json', return_value={'tag_name': m.APP_VERSION}) as github, \
+      patch('croweyes_updates.urllib.request.urlopen', side_effect=OSError('unexpected request')) as other, \
+      patch('croweyes_updates.messagebox.showinfo') as notice:
+  v.check_for_updates(manual=True)
+  pump(300)
+  github.assert_called_once_with(m.GITHUB_RELEASES_URL, m.APP_VERSION)
+  other.assert_not_called()
+  assert '최신 버전입니다' in notice.call_args.args[1]
  assert not errors,errors
- print('PASS: print footer/scale/margins/tiles, normal brand/editor print, Store first-run accept/decline/retry, partial update failures')
+ print('PASS: print footer/scale/margins/tiles, normal brand/editor print, Store first-run accept/decline/retry, GitHub-only manual check')
 finally:v.destroy()

@@ -13,7 +13,7 @@ old=comparator(ROOT/'tools/fixtures/legacy_update_comparator.py','1.9')
 new=comparator(ROOT/'CrowEyes_Image_Viewer_2.0.py',current)
 assert old['semantic_version']('v1.9e')==old['semantic_version']('1.9')
 assert not old['is_newer_version']('v1.9e','1.9')
-for previous in ('1.8','1.9','1.9d','1.9e','2.0.0','2.1.0'):
+for previous in ('1.8','1.9','1.9d','1.9e','2.0.0','2.1.0','2.2.0','2.2.0.0'):
     assert old['is_newer_version']('v'+current,previous)
     assert new['is_newer_version']('v'+current,previous)
 assert not new['is_newer_version']('v'+current)

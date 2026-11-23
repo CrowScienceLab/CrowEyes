@@ -31,6 +31,7 @@ for pages in (2,4):
             assert rendered.convert('RGB').getpixel((5,5))==(255,255,255)
             samples.append(pixel)
     results.append(dict(pages=pages,path=str(pdf),center_rgb=samples,white_margin=True))
-report=ROOT/'docs/maintenance/2026-11-11-v2.2-review/print-pdf.json'
+report=folder/'print-pdf.json'
 report.write_text(json.dumps(dict(status='PASS',results=results),indent=2),encoding='utf-8')
 print('PASS: real GDI -> Microsoft Print to PDF -> Poppler; 2/4 pages, quadrant order, white margins')
+print(report)
