@@ -21,7 +21,7 @@ def circle(x,y,r,fill,stroke='none',width=2):
     return f'<circle cx="{x}" cy="{y}" r="{r}" fill="{fill}" stroke="{stroke}" stroke-width="{width}"/>'
 
 
-def artwork(name):
+def artwork(name, dark=True):
     blue='url(#blue)';gold='url(#gold)';green='url(#green)';purple='url(#purple)';red='url(#red)'
     # Silhouettes use the full optical square; individual buttons have no baked-in frame.
     if name in ('previous','next','up'):
@@ -70,7 +70,10 @@ def artwork(name):
     if name=='pause':return rect(6,5,7,23,gold,2)+rect(20,5,7,23,gold,2)
     if name=='info':return circle(16,16,13,blue,'#438ebc',1)+circle(16,9,1.7,'#f0fcff')+path('M14 14h3v10m-3 0h6',stroke='#f0fcff',width=2)
     if name=='ai_generated':return path('M16 2 20 11l10 5-10 4-4 10-4-10-10-4 10-5Z',purple,'#aa83dc',.7)+path('m23 3 1 3 3 1-3 1-1 3-1-3-3-1 3-1Z','#e5c5ff','none')+path('M16 8v5l-4 3',stroke='#f6eaff',width=1.5)
-    if name=='shield':return circle(16,16,13,'#fff3f5','#f15c72',2.5)+'<text x="16" y="21" text-anchor="middle" font-family="Segoe UI" font-weight="700" font-size="14" fill="#ce2c4c">19</text>'
+    if name=='shield':
+        bg='#2e1c24' if dark else '#fff3f5'
+        txt='#ff7b92' if dark else '#ce2c4c'
+        return circle(16,16,13,bg,'#f15c72',2.2)+f'<text x="16" y="21" text-anchor="middle" font-family="Segoe UI" font-weight="700" font-size="14" fill="{txt}">19</text>'
     if name=='index':return path('M5 8h22v17q-11 7-22 0Z',blue,'#3083af',1)+'<ellipse cx="16" cy="8" rx="11" ry="4.5" fill="#b7ecff" stroke="#489ecc" stroke-width="1.2"/>'+path('M5 15q11 7 22 0M5 22q11 7 22 0',stroke='#c0f4ff',width=1.3)
     if name in ('hidden','visible'):
         result=path('M2 16Q16 0 30 16Q16 32 2 16Z','#c8e8f9','#65b3da',1)+circle(16,16,5,blue)+circle(17,14,1.4,'#f4ffff')
@@ -86,7 +89,7 @@ def artwork(name):
 
 @lru_cache(maxsize=256)
 def render_icon(name, size, dark):
-    drawing=artwork(name)
+    drawing=artwork(name, dark=dark)
     if drawing is None:return None
     ink='#d6e5f5' if dark else '#405773'
     gradients={'blue':('#8de1ff','#278bd1'),'gold':('#ffe79a','#f4ad2e'),

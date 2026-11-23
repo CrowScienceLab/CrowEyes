@@ -7,6 +7,7 @@ import sqlite3
 import tempfile
 from pathlib import Path
 from PIL import Image, ImageOps
+from croweyes_decode import JPEG_FORMATS, MAX_INPUT_PIXELS, check_image_size
 
 
 def catalog_path():
@@ -63,6 +64,58 @@ def register_format(path):
     return suffix
 
 
+def _allow_jpeg_end_marker(source):
+    # Pillow's JPEG reader can finish at a synthesized EOI marker. Give
+    # just this reader one marker at EOF, leaving other workers strict.
+    read = source.fp.read
+    end_marker_sent = False
+
+    def read_with_end_marker(size):
+        nonlocal end_marker_sent
+        data = read(size)
+        if data or end_marker_sent:
+            return data
+        end_marker_sent = True
+        return b"\xff\xd9"
+
+    source.load_read = read_with_end_marker
+
+
+def _draft_jpeg_preview(source):
+    factor = min(1, 4096 / max(source.size))
+    target = tuple(max(1, int(side * factor)) for side in source.size)
+    try:
+        # Draft also scales CMYK JPEGs without changing their mode.
+        source.draft(source.mode, target)
+    except (OSError, ValueError):
+        pass
+
+
+def _decode_raster(path, preview):
+    with Image.open(path) as source:
+        check_image_size(source, preview=preview)
+        is_jpeg = source.format in JPEG_FORMATS
+        if preview and is_jpeg:
+            _draft_jpeg_preview(source)
+        try:
+            image = ImageOps.exif_transpose(source)
+        except OSError as exc:
+            if not is_jpeg or "truncated" not in str(exc).lower():
+                raise
+            source.close()
+            with Image.open(path) as retry:
+                if retry.format not in JPEG_FORMATS:
+                    raise
+                check_image_size(retry, preview=preview)
+                if preview:
+                    _draft_jpeg_preview(retry)
+                _allow_jpeg_end_marker(retry)
+                image = ImageOps.exif_transpose(retry)
+    if preview:
+        image.thumbnail((4096, 4096), Image.Resampling.LANCZOS)
+    return image
+
+
 def open_image(path, preview=False, color=True):
     suffix = register_format(path)
     if suffix in {'.heic', '.heif'}:
@@ -76,33 +129,34 @@ def open_image(path, preview=False, color=True):
         with rawpy.imread(str(path)) as raw:
             thumb = raw.extract_thumb()
             if thumb.format == rawpy.ThumbFormat.JPEG:
-                im = Image.open(io.BytesIO(thumb.data))
+                with Image.open(io.BytesIO(thumb.data)) as source:
+                    check_image_size(source)
+                    im = source.copy()
             else:
+                if thumb.data.shape[0] * thumb.data.shape[1] > MAX_INPUT_PIXELS:
+                    raise ValueError('입력 한도는 2억 픽셀입니다.')
                 im = Image.fromarray(thumb.data)
-            im.load()
-            im = im.copy()
     else:
-        with Image.open(path) as source:
-            if source.width * source.height > 200_000_000:
-                raise ValueError('입력 한도는 2억 픽셀입니다.')
-            if preview and source.width*source.height>64_000_000 and source.format not in {'JPEG','MPO'}:
-                raise ValueError('이 형식의 축소 디코딩을 지원하지 않아 메모리 보호를 위해 6,400만 픽셀로 제한합니다.')
-            if preview:
-                factor=min(1,4096/max(source.size))
-                source.draft('RGB', (max(1,int(source.width*factor)),max(1,int(source.height*factor))))
-            im = ImageOps.exif_transpose(source)
-            if preview:
-                im.thumbnail((4096, 4096), Image.Resampling.LANCZOS)
-            im.load()
+        im = _decode_raster(path, preview)
     if color and im.info.get('icc_profile'):
         from PIL import ImageCms
         try:
-            source_info = dict(im.info)
-            im = ImageCms.profileToProfile(im, ImageCms.ImageCmsProfile(io.BytesIO(im.info['icc_profile'])), ImageCms.createProfile('sRGB'), outputMode='RGBA')
-            im.info.update(source_info)
-            im.info['icc_profile'] = ImageCms.ImageCmsProfile(ImageCms.createProfile('sRGB')).tobytes()
-        except (OSError, ValueError) as exc:
-            raise ValueError('ICC 프로파일을 변환할 수 없습니다: '+str(exc)) from exc
+            source_profile = ImageCms.ImageCmsProfile(io.BytesIO(im.info['icc_profile']))
+            srgb = ImageCms.ImageCmsProfile(ImageCms.createProfile('sRGB'))
+            # A resized RGB image's unused fourth byte is not an alpha channel.
+            converted = ImageCms.profileToProfile(im, source_profile, srgb, outputMode='RGB')
+            converted.info.update(im.info)
+            converted.info['icc_profile'] = srgb.tobytes()
+            if im.has_transparency_data:
+                alpha = im.getchannel('A') if 'A' in im.getbands() else im.convert('RGBA').getchannel('A')
+                converted.putalpha(alpha)
+                converted.info.pop('transparency', None)
+            im = converted
+        except (OSError, ValueError, ImageCms.PyCMSError):
+            # Fall back to standard RGBA conversion when an image carries an
+            # incompatible or malformed embedded ICC profile (e.g. CMYK/Gray).
+            im = im.convert('RGBA')
+            im.info.pop('icc_profile', None)
     return im
 
 

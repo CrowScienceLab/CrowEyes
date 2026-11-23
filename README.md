@@ -1,16 +1,15 @@
-# CrowEyes Image Viewer 2.2
+# CrowEyes Image Viewer 2.3
 
 Windows 10/11 x64용 이미지 뷰어입니다. 빠른 사진 탐색을 중심으로 편집·OCR·사진 정리 도구를 필요한 순간에 사용할 수 있습니다. 제작자는 Crow Science Lab입니다.
 
-[GitHub 최신 다운로드](https://github.com/CrowScienceLab/CrowEyes/releases/latest) · [Microsoft Store](https://apps.microsoft.com/detail/9NNHX36VPSQZ) · [2.2 새 기능과 자세한 사용 안내](RELEASE_NOTES_v2.2.0.md)
+[GitHub 최신 다운로드](https://github.com/CrowScienceLab/CrowEyes/releases/latest) · [Microsoft Store](https://apps.microsoft.com/detail/9NNHX36VPSQZ) · [2.3 변경 내역](RELEASE_NOTES_v2.3.0.md)
 
-## 2.2의 주요 개선
+## 2.3의 주요 개선
 
-- 배율 1~1000%, 상하좌우 여백(mm), DPI와 실제 인쇄 크기 안내를 추가했습니다.
-- 2장·4장 포스터 분할 출력과 페이지 번호·점선 미리보기를 제공합니다.
-- 인쇄 창을 크기 조절 가능한 탭 구조로 바꾸고 인쇄/닫기 버튼 잘림을 수정했습니다. 편집 화면에도 인쇄 아이콘을 추가했습니다.
-- GitHub와 Microsoft Store를 함께 확인하고 같은 최신 버전은 Store를 우선합니다. 확인 실패를 최신 상태로 표시하지 않습니다.
-- Store 첫 실행에 바탕화면 바로가기 선택과 기본 앱 등록 안내를 제공합니다. 기존 Windows 기본 앱 선택을 유지합니다.
+- CrowFlow 도구 모음에 작업별 그룹을 배치했습니다. 뷰어와 편집 전환 시 파일목록과 이미지 영역을 공유합니다.
+- 파일목록을 2단으로 정리하고, 이미지 오른쪽 아래에서 확대·축소·100%·화면 맞춤을 바로 선택할 수 있습니다.
+- 대용량 JPEG와 MPO 미리보기, 일부 손상 JPEG의 복구, 읽을 수 없는 ICC 프로파일 처리와 이미지 크기 제한을 개선했습니다.
+- 좁은 창에서도 인쇄 설정과 단축키 안내를 보기 쉽게 정리했습니다. 모드 스위치에서 방향키와 Space를 눌러도 이미지 이동이나 재생이 함께 실행되지 않습니다.
 
 ## 앱 기능
 
@@ -29,7 +28,7 @@ Windows 10/11 x64용 이미지 뷰어입니다. 빠른 사진 탐색을 중심�
 
 Setup EXE는 일반 설치와 기존 GitHub 설치형 업데이트용입니다. Portable ZIP은 **전체 압축을 풀고** CrowEyes.exe를 실행하세요. SHA256SUMS.txt로 무결성을 확인할 수 있습니다. Store 설치형은 Microsoft Store에서 업데이트합니다. GitHub와 Store 공개 시점은 심사·게시 처리에 따라 다를 수 있습니다.
 
-시작 시 자동 업데이트 확인은 기본 켜짐이며 사용자가 끈 설정은 유지합니다. 같은 최신 버전은 Store가 우선입니다. Store 설치 후 첫 실행에 바로가기 추가 여부를 선택합니다. 지원 이미지 형식은 연결 프로그램 후보로 등록하지만 Windows 기본 앱 선택을 강제로 변경하지 않습니다.
+시작 시 자동 업데이트 확인은 기본 켜짐이며 사용자가 끈 설정은 유지합니다. 자동·수동 확인 모두 GitHub의 Setup·Portable은 GitHub 릴리스만 확인하고, Microsoft Store 설치형은 공식 Store API만 확인합니다. Store 설치 후 첫 실행에 바로가기 추가 여부를 선택합니다. 지원 이미지 형식은 연결 프로그램 후보로 등록하지만 Windows 기본 앱 선택을 강제로 변경하지 않습니다.
 
 ## 사용 조건과 개인정보
 
@@ -37,6 +36,6 @@ OCR 색인은 로컬 catalog.sqlite3에 저장하며 클립보드에 자동 복�
 
 RAW는 내장 미리보기이며 현상 도구가 아닙니다. HEIC/HEIF는 Windows 코덱, EPS는 외부 Ghostscript가 필요합니다. 고해상도 뷰어 편집·저장은 표시 미리보기 픽셀 기준이고 원본 픽셀 변환은 일괄 변환을 사용하세요. 분할 인쇄는 여백을 잘라 이어 붙이는 방식으로 겹침·재단 마크 옵션은 없습니다.
 
-앱/설치형/Portable은 2.2.0, GitHub 태그는 v2.2.0, Store 패키지는 2.2.0.0입니다. 버전 원본은 version.json입니다. 사용자 요청에 따라 2.0 미만 배포본과 전용 소스를 정리하며 개발 이력과 호환성 검증용 최소 fixture는 유지합니다.
+앱·설치형·Portable 버전은 2.3.0, 예정 GitHub 태그는 v2.3.0, Store 검토 패키지는 2.3.0.0입니다. 버전 원본은 version.json입니다.
 
-[빌드 안내](docs/BUILD_V2.md) · [2.2 검토·검증 기록](docs/REVIEW_V2_2.md) · [개인정보](PRIVACY.md) · [라이선스](THIRD_PARTY_NOTICES.md) · [Windows 실행 안내](WINDOWS_SECURITY.md)
+[빌드 안내](docs/BUILD_V2.md) · [2.3 검토·검증 기록](docs/REVIEW_V2_3.md) · [개인정보](PRIVACY.md) · [라이선스](THIRD_PARTY_NOTICES.md) · [Windows 실행 안내](WINDOWS_SECURITY.md)

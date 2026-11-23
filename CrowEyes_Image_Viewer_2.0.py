@@ -74,6 +74,7 @@ except ImportError:
     send2trash = None  # type: ignore[assignment]
 
 
+from croweyes_decode import animation_frame_count, check_image_size
 from croweyes_editing import selection_box, validate_size, save_raster, validate_update_url
 
 from croweyes_safety import (
@@ -225,8 +226,8 @@ CROWEYES_THEMES = {
         "danger": "#E17A82", "toolbar": "#24292F", "status": "#202429",
         "button": "#38414A", "button_active": "#46525E", "button_pressed": "#252C33",
         "button_fg": "#FFFFFF", "button_highlight": "#8996A3", "button_shadow": "#161A1E",
-        "placeholder": "#86919D", "font": ("Segoe UI", 10),
-        "font_title": ("Segoe UI Semibold", 11),
+        "placeholder": "#86919D", "font": ("맑은 고딕", 10),
+        "font_title": ("맑은 고딕", 11, "bold"),
     },
     "bright_sky_blue": {
         "bg": "#EAF7FF", "panel": "#F8FCFF", "panel_alt": "#D7EEFA",
@@ -237,8 +238,8 @@ CROWEYES_THEMES = {
         "danger": "#B23D4A", "toolbar": "#D9F0FC", "status": "#CDE8F6",
         "button": "#B9DFF2", "button_active": "#9FD4ED", "button_pressed": "#79BDDE",
         "button_fg": "#133044", "button_highlight": "#F8FDFF", "button_shadow": "#387A9A",
-        "placeholder": "#64859A", "font": ("Segoe UI", 10),
-        "font_title": ("Segoe UI Semibold", 11),
+        "placeholder": "#64859A", "font": ("맑은 고딕", 10),
+        "font_title": ("맑은 고딕", 11, "bold"),
     },
     "white_light_pink": {
         "bg": "#FFF8FB", "panel": "#FFFFFF", "panel_alt": "#FDECF3",
@@ -249,8 +250,8 @@ CROWEYES_THEMES = {
         "danger": "#B93657", "toolbar": "#FFF0F6", "status": "#FCE5EE",
         "button": "#F8D5E3", "button_active": "#F2BDD2", "button_pressed": "#EBA5C0",
         "button_fg": "#432832", "button_highlight": "#FFFFFF", "button_shadow": "#9A4C69",
-        "placeholder": "#A98292", "font": ("Segoe UI", 10),
-        "font_title": ("Segoe UI Semibold", 11),
+        "placeholder": "#A98292", "font": ("맑은 고딕", 10),
+        "font_title": ("맑은 고딕", 11, "bold"),
     },
 }
 
@@ -626,6 +627,8 @@ def render_eps(path: Path, target_width: int, target_height: int) -> Tuple[Image
 
         EpsImagePlugin.gs_binary = str(ghostscript)
         with Image.open(path) as opened:
+            if opened.width * opened.height > MAX_RENDER_PIXELS:
+                raise FormatSupportError("EPS 래스터화 한도는 1,600만 픽셀입니다.")
             logical_size = (float(opened.width), float(opened.height))
             target = _bounded_size(opened.width, opened.height, target_width, target_height)
             scale = max(1, int(math.ceil(max(target[0] / opened.width, target[1] / opened.height))))
@@ -910,15 +913,13 @@ def load_animation_frames(path: Path, color: bool = True) -> Tuple[List[Image.Im
     from croweyes_workflows import register_format
     register_format(path)
     with Image.open(path) as src:
-        fmt = (src.format or "").upper()
-        n_frames = getattr(src, "n_frames", 1) or 1
-        if src.width * src.height > 40_000_000 and n_frames > 1:
-            raise FormatSupportError("고해상도 애니메이션은 지원하지 않습니다.")
-        if n_frames > 1 and (n_frames > 1000 or src.width * src.height * n_frames * 4 > 256 * 1024 * 1024):
-            raise FormatSupportError("애니메이션이 메모리 한도(256MB 또는 1,000프레임)를 초과합니다.")
-        is_anim = n_frames > 1 and fmt in {"GIF", "WEBP"}
+        check_image_size(src)
+        try:
+            n_frames = animation_frame_count(src)
+        except ValueError as exc:
+            raise FormatSupportError(str(exc)) from exc
 
-        if not is_anim:
+        if n_frames == 1:
             from croweyes_workflows import open_image
             frame = open_image(path, preview=src.width * src.height > 24_000_000, color=color)
             return [_frame_to_rgba(frame)], [0], False
@@ -1002,8 +1003,11 @@ def load_source_image(
     logical = (float(frames[0].width), float(frames[0].height))
     with Image.open(path) as header:
         original = header.size
-        if header.getexif().get(274) in (5, 6, 7, 8):
-            original = original[::-1]
+        try:
+            if header.getexif().get(274) in (5, 6, 7, 8):
+                original = original[::-1]
+        except Exception:
+            pass
     if original != frames[0].size:
         return frames, delays, animated, 'preview', original, frames[0].width / original[0]
     return frames, delays, animated, source_type, logical, 1.0
@@ -1956,15 +1960,14 @@ class PlaylistPanel(ttk.Frame):
     """Playlist controls and the lazily populated list container."""
 
     def __init__(self, master: tk.Widget, viewer: "CrowEyesImageViewer") -> None:
-        super().__init__(master, style="Card.TFrame", padding=12)
+        super().__init__(master, style="Card.TFrame", padding=10)
         self.viewer = viewer
         header = ttk.Frame(self, style="Panel.TFrame")
         header.pack(fill=tk.X)
         ttk.Label(header, text="파일 목록", style="Section.TLabel").pack(side=tk.LEFT)
-        viewer.build_browser_menus(header)
         close = tk.Button(
             header, image=viewer._icons["close"], command=viewer.hide_playlist_panel,
-            bd=0, relief=tk.FLAT, cursor="hand2", padx=4, pady=4,
+            bd=0, relief=tk.FLAT, cursor="hand2", padx=3, pady=3,
         )
         close._croweyes_image = viewer._icons["close"]  # type: ignore[attr-defined]
         close.pack(side=tk.RIGHT)
@@ -1972,10 +1975,15 @@ class PlaylistPanel(ttk.Frame):
         ToolTip(close, "플레이리스트 닫기")
         ttk.Label(
             header, textvariable=viewer._playlist_count_var, style="Badge.TLabel",
-        ).pack(side=tk.RIGHT, padx=(0, 6))
+        ).pack(side=tk.RIGHT, padx=(2, 6))
+
+        controls_row = ttk.Frame(self, style="Panel.TFrame", padding=(0, 6, 0, 2))
+        controls_row.pack(fill=tk.X)
+        viewer.build_browser_menus(controls_row)
+        ttk.Separator(self).pack(fill=tk.X, pady=(4, 0))
 
         viewer.list_container = ttk.Frame(self, style="Panel.TFrame")
-        viewer.list_container.pack(fill=tk.BOTH, expand=True, pady=(8, 0))
+        viewer.list_container.pack(fill=tk.BOTH, expand=True, pady=(6, 0))
 
 
 class ImageCanvasView(ttk.Frame):
@@ -2013,6 +2021,37 @@ class ImageCanvasView(ttk.Frame):
 
         viewer._canvas_prev_btn = navigation_button("‹", viewer.prev_image, "이전 이미지 (←)")
         viewer._canvas_next_btn = navigation_button("›", viewer.next_image, "다음 이미지 (→)")
+
+        hud = tk.Frame(self, bd=0, highlightthickness=1)
+        hud_buttons = []
+        def hud_btn(text, cmd, tip, width=0):
+            b = tk.Button(
+                hud, text=text, command=viewer._action(cmd),
+                font=("맑은 고딕", 9, "bold") if text in ("−", "+") else ("맑은 고딕", 8, "bold"),
+                width=width, bd=0, relief=tk.FLAT, cursor="hand2", takefocus=False,
+                padx=6, pady=2,
+            )
+            b.pack(side=tk.LEFT)
+            ToolTip(b, tip)
+            hud_buttons.append(b)
+            return b
+        hud_btn("−", lambda: viewer.zoom_by(1 / 1.15), "축소 (-)", width=2)
+        pct_btn = tk.Button(
+            hud, textvariable=viewer._zoom_hud_var, command=viewer._action(viewer.actual_size),
+            font=("맑은 고딕", 8, "bold"), bd=0, relief=tk.FLAT, cursor="hand2",
+            takefocus=False, padx=6, pady=2,
+        )
+        pct_btn.pack(side=tk.LEFT)
+        ToolTip(pct_btn, "100% 원본 크기 (Ctrl+0)")
+        hud_buttons.append(pct_btn)
+        hud_btn("+", lambda: viewer.zoom_by(1.15), "확대 (+)", width=2)
+        sep = tk.Frame(hud, width=1, height=14)
+        sep.pack(side=tk.LEFT, padx=3, pady=3)
+        fit_btn = hud_btn("맞춤", viewer.fit_to_window, "화면에 맞춤 (Ctrl+1)")
+        fit_btn._croweyes_hud_accent = True  # type: ignore[attr-defined]
+        viewer._zoom_hud = hud
+        viewer._zoom_hud_sep = sep
+        viewer._zoom_hud_buttons = hud_buttons
         viewer._update_canvas_navigation_buttons()
 
 
@@ -2068,15 +2107,15 @@ class ContextControlBar(ttk.Frame):
         self.columnconfigure(2, weight=1)
         self.columnconfigure(3, weight=0)
         from tkinter.font import Font
-        status_font=Font(root=viewer,family='Segoe UI',size=9)
-        status_wrap=ttk.Frame(self,style='BottomBar.TFrame',width=status_font.measure('Pixel (99999, 99999)  #FFFFFF')+34,height=status_font.metrics('linespace')+6)
+        status_font=Font(root=viewer,family='맑은 고딕',size=9)
+        status_wrap=ttk.Frame(self,style='BottomBar.TFrame',width=status_font.measure('Pixel (99999, 99999)  #FFFFFF')+56,height=max(24,status_font.metrics('linespace')+10))
         status_wrap.grid(row=0,column=0,sticky='w')
         status_wrap.pack_propagate(False)
         viewer.status = ColorStatusLabel(
             status_wrap, text="Pixel (—, —)  #------", style="Status.TLabel",
             anchor="w", width=0,
         )
-        viewer.status.pack(side=tk.LEFT)
+        viewer.status.pack(side=tk.LEFT, fill=tk.Y)
         viewer._pixel_swatch=tk.Canvas(status_wrap,width=18,height=18,highlightthickness=0,bd=0)
         viewer._pixel_swatch.create_rectangle(1,1,17,17,fill='',outline='#92A1AF',width=1,tags='color')
         viewer.status.swatch=viewer._pixel_swatch
@@ -2273,6 +2312,7 @@ class CrowEyesImageViewer(tb.Window):
         self._file_title_var = tk.StringVar(value="이미지를 열어 주세요")
         self._current_path_var = tk.StringVar(value="경로 없음")
         self._zoom_text_var = tk.StringVar(value="크기 100%")
+        self._zoom_hud_var = tk.StringVar(value="100%")
         self._playlist_count_var = tk.StringVar(value="0")
         self._playlist_panel_var = tk.BooleanVar(value=self._playlist_visible)
         self._info_panel_var = tk.BooleanVar(value=self._info_visible)
@@ -2318,11 +2358,14 @@ class CrowEyesImageViewer(tb.Window):
         else:
             self.navigate_to_computer()
 
-        store_first_run=is_microsoft_store_package() and not self.settings.get('store_onboarding_complete',False)
+        # The running executable's Windows package identity persists across
+        # Store updates and is independent of settings shared with Portable.
+        self._runs_as_store = is_microsoft_store_package()
+        store_first_run=self._runs_as_store and not self.settings.get('store_onboarding_complete',False)
         if store_first_run:
             from croweyes_onboarding import show_store_onboarding
             self.after(350,lambda:show_store_onboarding(self))
-        elif not is_microsoft_store_package() and bool(self.settings.get("auto_register_associations", True)) and not self.settings.get("initial_associations_registered",False):
+        elif not self._runs_as_store and bool(self.settings.get("auto_register_associations", True)) and not self.settings.get("initial_associations_registered",False):
             self.after(250,self._auto_register_file_associations)
         if not store_first_run and bool(self.settings.get("auto_check_updates", True)):
             self.after(900, lambda: self.check_for_updates(manual=False))
@@ -2363,6 +2406,22 @@ class CrowEyesImageViewer(tb.Window):
             highlightcolor=t["accent"],
         )
 
+    def _style_zoom_hud(self) -> None:
+        hud = getattr(self, "_zoom_hud", None)
+        if hud is None:
+            return
+        t = self._theme()
+        hud.configure(bg=t["panel"], highlightbackground=t["border"], highlightcolor=t["accent"])
+        sep = getattr(self, "_zoom_hud_sep", None)
+        if sep is not None:
+            sep.configure(bg=t["border"])
+        for btn in getattr(self, "_zoom_hud_buttons", []):
+            fg = t["accent_hi"] if getattr(btn, "_croweyes_hud_accent", False) else t["fg"]
+            btn.configure(
+                bg=t["panel"], fg=fg,
+                activebackground=t["select"], activeforeground=t["select_fg"],
+            )
+
     def _update_canvas_navigation_buttons(self) -> None:
         """Show centered edge controls only when previous/next navigation is useful."""
         previous = getattr(self, "_canvas_prev_btn", None)
@@ -2371,6 +2430,7 @@ class CrowEyesImageViewer(tb.Window):
             return
         self._style_canvas_nav_button(previous)
         self._style_canvas_nav_button(following)
+        self._style_zoom_hud()
         navigable = self.display_image is not None or self._content_safety_status in {BLOCKED, ERROR}
         if len(self.folder_files) >= 2 and navigable:
             previous.place(relx=0.0, rely=0.5, x=12, anchor="w")
@@ -2380,6 +2440,13 @@ class CrowEyesImageViewer(tb.Window):
         else:
             previous.place_forget()
             following.place_forget()
+        hud = getattr(self, "_zoom_hud", None)
+        if hud is not None:
+            if self.display_image is not None and not self._image_fullscreen:
+                hud.place(relx=1.0, rely=1.0, x=-12, y=-12, anchor="se")
+                hud.lift()
+            else:
+                hud.place_forget()
 
     # ----- theme / UI ------------------------------------------------------
 
@@ -2927,7 +2994,10 @@ class CrowEyesImageViewer(tb.Window):
                 self.goto_index(idx, from_list=True)
                 self._restore_playlist_selection_visuals()
         paths = self._selected_playlist_paths()
-        menu = tk.Menu(self, tearoff=0)
+        t = self._theme()
+        menu = tk.Menu(self, tearoff=0, bg=t["panel"], fg=t["fg"],
+                       activebackground=t["select"], activeforeground=t["select_fg"],
+                       selectcolor=t["accent"], bd=0, font=("맑은 고딕", 9))
         if len(paths) == 1:
             menu.add_command(label="열기", command=lambda: self.goto_index(self.folder_files.index(paths[0])))
             menu.add_command(label="이름 바꾸기\tF2", command=self.rename_selected_file)
@@ -2937,13 +3007,15 @@ class CrowEyesImageViewer(tb.Window):
         menu.add_command(label="파일 위치 열기", command=self.open_selected_file_location, state=tk.NORMAL if paths else tk.DISABLED)
         if len(paths) == 1:
             menu.add_separator()
-            formats = tk.Menu(menu, tearoff=0)
+            formats = tk.Menu(menu, tearoff=0, bg=t["panel"], fg=t["fg"],
+                              activebackground=t["select"], activeforeground=t["select_fg"],
+                              bd=0, font=("맑은 고딕", 9))
             for label, suffix in (("PNG", ".png"), ("JPEG", ".jpg"), ("WebP", ".webp"), ("BMP", ".bmp"), ("TIFF", ".tiff")):
                 formats.add_command(label=label, command=lambda ext=suffix: self.save_as_format(ext))
             menu.add_cascade(label="다른 형식으로 저장", menu=formats)
         self.add_visibility_commands(menu, paths)
-        sorting=tk.Menu(menu,tearoff=False);self._fill_sort_menu(sorting)
-        viewing=tk.Menu(menu,tearoff=False);self._fill_view_menu(viewing)
+        sorting=tk.Menu(menu,tearoff=False,bg=t["panel"],fg=t["fg"],activebackground=t["select"],activeforeground=t["select_fg"],selectcolor=t["accent"],bd=0,font=("맑은 고딕",9));self._fill_sort_menu(sorting)
+        viewing=tk.Menu(menu,tearoff=False,bg=t["panel"],fg=t["fg"],activebackground=t["select"],activeforeground=t["select_fg"],selectcolor=t["accent"],bd=0,font=("맑은 고딕",9));self._fill_view_menu(viewing)
         menu.add_separator()
         menu.add_cascade(label='정렬',menu=sorting)
         menu.add_cascade(label='보기',menu=viewing)
@@ -3347,7 +3419,7 @@ class CrowEyesImageViewer(tb.Window):
             from croweyes_thumbnails import get, put
             thumb_settings=self.__dict__.get('settings', {})
             color=thumb_settings.get('color_management',True)
-            theme_key = 'cover-v3-'+thumb_settings.get('ui_theme', 'croweyes_dark')+str(color)
+            theme_key = 'cover-v4-'+thumb_settings.get('ui_theme', 'croweyes_dark')+str(color)
             cached = get(path, size, theme_key)
             if cached is not None:
                 return cached
@@ -3363,6 +3435,7 @@ class CrowEyesImageViewer(tb.Window):
                 # Pillow's PSD decoder starts on its sole composite frame and
                 # raises EOFError if seek(0) is called, so do not seek here.
                 with Image.open(path) as opened:
+                    check_image_size(opened, preview=True)
                     opened.load()
                     im = _frame_to_rgba(opened.copy())
             else:
@@ -3716,10 +3789,10 @@ class CrowEyesImageViewer(tb.Window):
         if getattr(self,'_breadcrumb_stamp',None)==stamp and hasattr(self,'_breadcrumb_canvas') and self._breadcrumb_canvas.winfo_exists():return
         self._breadcrumb_stamp=stamp
         if not hasattr(self,'_breadcrumb_canvas') or not self._breadcrumb_canvas.winfo_exists():
-            self._breadcrumb_overflow=tk.Label(frame,text='…',width=2,bg=self._theme()['toolbar'],fg=self._theme()['fg'],cursor='hand2')
-            self._breadcrumb_overflow.tk.call(self._breadcrumb_overflow._w,'configure','-background',self._theme()['toolbar'],'-foreground',self._theme()['fg'])
-            self._breadcrumb_overflow.pack(side='right',padx=(3,0))
-            ToolTip(self._breadcrumb_overflow,'컴퓨터와 상위 폴더 선택 · 긴 경로에서는 메뉴 또는 휠 사용')
+            self._breadcrumb_overflow=tk.Label(frame,text='⋯',width=2,bg=self._theme()['toolbar'],fg=self._theme()['muted'],cursor='hand2',font=('맑은 고딕',10))
+            self._breadcrumb_overflow.tk.call(self._breadcrumb_overflow._w,'configure','-background',self._theme()['toolbar'],'-foreground',self._theme()['muted'])
+            self._breadcrumb_overflow.pack(side='right',padx=(4,0))
+            ToolTip(self._breadcrumb_overflow,'경로 목록 열기 · 긴 경로에서는 메뉴 또는 휠 사용')
             self._breadcrumb_canvas=tk.Canvas(frame,height=32,highlightthickness=0,bg=self._theme()['toolbar'])
             self._breadcrumb_canvas.tk.call(self._breadcrumb_canvas._w,'configure','-background',self._theme()['toolbar'])
             self._breadcrumb_canvas.pack(fill='x',expand=True)
@@ -3739,20 +3812,22 @@ class CrowEyesImageViewer(tb.Window):
         for child in links.winfo_children():child.destroy()
         self._breadcrumb_targets=[]
         if hasattr(self,'_breadcrumb_menu'):self._breadcrumb_menu.destroy()
-        self._breadcrumb_menu=tk.Menu(self,tearoff=False)
+        t=self._theme()
+        self._breadcrumb_overflow.tk.call(self._breadcrumb_overflow._w,'configure','-background',t['toolbar'],'-foreground',t['muted'])
+        self._breadcrumb_menu=tk.Menu(self,tearoff=False,bg=t['panel'],fg=t['fg'],activebackground=t['select'],activeforeground=t['select_fg'],bd=0,font=('맑은 고딕',9))
         self._breadcrumb_overflow.bind('<Button-1>',lambda e:self._breadcrumb_menu.tk_popup(e.x_root,e.y_root))
         def link(text,target):
             command=self.navigate_to_computer if target is None else lambda p=target:self._navigate_playlist_folder(p)
             button=tk.Label(frame if target is None else links,text=text,image=self._icons['computer'] if target is None else '',
-                            bg=self._theme()['toolbar'],fg=self._theme()['fg'],bd=0,padx=4,pady=3,cursor='hand2',font=('Segoe UI',10),compound='left')
+                            bg=self._theme()['toolbar'],fg=self._theme()['fg'],bd=0,padx=4,pady=3,cursor='hand2',font=('맑은 고딕',9),compound='left')
             button.tk.call(button._w,'configure','-background',self._theme()['toolbar'],'-foreground','#79BEFF' if self.settings.get('ui_theme')=='croweyes_dark' else '#1263AD')
             if target is None:button.pack(side='left',before=self._breadcrumb_canvas)
             else:button.pack(side='left')
             button._croweyes_target=target
             button._croweyes_command=command
             button.bind('<Button-1>',lambda e:command())
-            button.bind('<Enter>',lambda e:button.configure(font=('Segoe UI',10,'underline')))
-            button.bind('<Leave>',lambda e:button.configure(font=('Segoe UI',10)))
+            button.bind('<Enter>',lambda e:button.configure(font=('맑은 고딕',9,'underline')))
+            button.bind('<Leave>',lambda e:button.configure(font=('맑은 고딕',9)))
             self._breadcrumb_menu.add_command(label='컴퓨터' if target is None else str(target),command=self.navigate_to_computer if target is None else lambda p=target:self._navigate_playlist_folder(p))
             button.bind('<MouseWheel>',lambda e:(self._breadcrumb_canvas.xview_scroll(-2 if e.delta>0 else 2,'units'),'break')[-1])
             self._breadcrumb_targets.append(button)
@@ -3982,8 +4057,16 @@ class CrowEyesImageViewer(tb.Window):
     def fit_to_window(self) -> None:
         if self.display_image is None:
             return
-        cw = max(1, self.canvas.winfo_width())
-        ch = max(1, self.canvas.winfo_height())
+        cw = self.canvas.winfo_width()
+        ch = self.canvas.winfo_height()
+        if cw <= 1 or ch <= 1:
+            self.update_idletasks()
+            cw = self.canvas.winfo_width()
+            ch = self.canvas.winfo_height()
+            if cw <= 1 or ch <= 1:
+                self._view_mode = "fit"
+                self.after_idle(self.fit_to_window)
+                return
         iw, ih = self._logical_display_size()
         # Fill the image area while keeping aspect; center with zero pan
         self.zoom = min(cw / iw, ch / ih)
@@ -4086,8 +4169,9 @@ class CrowEyesImageViewer(tb.Window):
         menu = tk.Menu(self, tearoff=0)
         t = self._theme()
         menu.configure(
-            bg=t["toolbar"], fg=t["fg"], activebackground=t["select"],
-            activeforeground=t["select_fg"], bd=0,
+            bg=t["panel"], fg=t["fg"], activebackground=t["select"],
+            activeforeground=t["select_fg"], selectcolor=t["accent"],
+            bd=0, font=("맑은 고딕", 9),
         )
         menu.add_command(
             label="클립보드로 원본 크기 복사",
@@ -4543,7 +4627,8 @@ class CrowEyesImageViewer(tb.Window):
         self.canvas.configure(bg=canvas_bg)
         style = ttk.Style(self)
         try:
-            style.theme_use("clam")
+            if style.theme_use() != "clam":
+                style.theme_use("clam")
         except tk.TclError:
             pass
         for name, bg in (
@@ -4561,32 +4646,32 @@ class CrowEyesImageViewer(tb.Window):
         style.configure("TLabel", background=t["bg"], foreground=t["fg"], font=t["font"])
         style.configure("Brand.TLabel", background=t["toolbar"], foreground=t["fg"], font=("Segoe UI", 20, "normal"))
         style.configure("Logo.TLabel", background=t["toolbar"], foreground=t["accent"], font=("Segoe UI", 17, "bold"))
-        style.configure("Product.TLabel", background=t["toolbar"], foreground=t["muted"], font=("Segoe UI Semibold", 8))
-        style.configure("Crumb.TLabel", background=t["toolbar"], foreground=t["muted"], font=("Segoe UI", 8))
-        style.configure("Breadcrumb.TLabel", background=t["toolbar"], foreground=t["muted"], font=("Segoe UI", 9))
+        style.configure("Product.TLabel", background=t["toolbar"], foreground=t["muted"], font=("맑은 고딕", 8, "bold"))
+        style.configure("Crumb.TLabel", background=t["toolbar"], foreground=t["muted"], font=("맑은 고딕", 8))
+        style.configure("Breadcrumb.TLabel", background=t["toolbar"], foreground=t["muted"], font=("맑은 고딕", 9))
         style.configure(
             "Breadcrumb.TButton", background=t["toolbar"], foreground=t["fg"],
-            borderwidth=0, relief="flat", padding=(4, 2), font=("Segoe UI", 9),
+            borderwidth=0, relief="flat", padding=(4, 2), font=("맑은 고딕", 9),
         )
         style.map("Breadcrumb.TButton", background=[("active", t["select"])])
-        style.configure("Chrome.TLabel",background=t["toolbar"],foreground=t["fg"],font=("Segoe UI",9),borderwidth=0)
-        style.configure("FileTitle.TLabel", background=t["toolbar"], foreground=t["fg"], font=("Segoe UI Semibold", 9))
-        style.configure("Section.TLabel", background=t["panel"], foreground=t["muted"], font=("Segoe UI Semibold", 9))
-        style.configure("Badge.TLabel", background=t["select"], foreground=t["accent_hi"], padding=(7, 2), font=("Segoe UI Semibold", 8))
+        style.configure("Chrome.TLabel",background=t["toolbar"],foreground=t["fg"],font=("맑은 고딕",9),borderwidth=0)
+        style.configure("FileTitle.TLabel", background=t["toolbar"], foreground=t["fg"], font=("맑은 고딕", 9, "bold"))
+        style.configure("Section.TLabel", background=t["panel"], foreground=t["muted"], font=("맑은 고딕", 9, "bold"))
+        style.configure("Badge.TLabel", background=t["select"], foreground=t["accent_hi"], padding=(6, 2), font=("맑은 고딕", 8, "bold"))
         style.configure("Title.TLabel", background=t["panel"], foreground=t["fg"], font=t["font_title"])
         style.configure("Muted.TLabel", background=t["toolbar"], foreground=t["muted"], font=t["font"])
-        style.configure("Status.TLabel", background=t["panel_alt"], foreground=t["muted"], font=("Segoe UI", 9))
-        style.configure("BottomBar.TLabel", background=t["panel_alt"], foreground=t["fg"], font=("Segoe UI", 9))
+        style.configure("Status.TLabel", background=t["panel_alt"], foreground=t["muted"], font=("맑은 고딕", 9))
+        style.configure("BottomBar.TLabel", background=t["panel_alt"], foreground=t["fg"], font=("맑은 고딕", 9))
         style.configure(
             "Path.TLabel", background=t["button"], foreground=t["fg"],
             bordercolor=t["border"], borderwidth=1, relief="sunken",
-            padding=(8, 3), font=("Segoe UI", 8),
+            padding=(8, 3), font=("맑은 고딕", 8),
         )
-        style.configure("Tooltip.TLabel", background=t["panel_alt"], foreground=t["fg"], relief="solid", borderwidth=1)
+        style.configure("Tooltip.TLabel", background=t["panel_alt"], foreground=t["fg"], relief="solid", borderwidth=1, font=("맑은 고딕", 9))
         style.configure(
             "Chrome.TMenubutton", background=t["toolbar"], foreground=t["fg"],
             borderwidth=0, relief="flat", padding=(10, 4), arrowcolor=t["muted"],
-            font=("Segoe UI", 9),
+            font=("맑은 고딕", 9),
         )
         style.map(
             "Chrome.TMenubutton",
@@ -4599,9 +4684,28 @@ class CrowEyesImageViewer(tb.Window):
             "darkcolor": t["button_shadow"], "focuscolor": t["accent"],
             "borderwidth": 1, "relief": "raised",
         }
+        style.configure("TButton", **button_style, padding=(10, 5), font=t["font"])
+        style.map(
+            "TButton",
+            background=[("pressed", t["button_pressed"]), ("active", t["button_active"])],
+            foreground=[("disabled", t["muted"])],
+            relief=[("pressed", "sunken"), ("!pressed", "raised")],
+        )
+        style.configure(
+            "Accent.TButton", background=t["accent_button"], foreground="#FFFFFF",
+            bordercolor=t["accent"], lightcolor=t["accent_hi"],
+            darkcolor=t["button_shadow"], focuscolor=t["accent_hi"],
+            borderwidth=1, relief="raised", padding=(12, 5), font=("맑은 고딕", 10, "bold"),
+        )
+        style.map(
+            "Accent.TButton",
+            background=[("pressed", t["accent_pressed"]), ("active", t["accent_button"])],
+            foreground=[("disabled", t["muted"])],
+            relief=[("pressed", "sunken"), ("!pressed", "raised")],
+        )
         style.configure(
             "Tool.TButton", **button_style, padding=(5, 4),
-            font=("Segoe UI Semibold", 9),
+            font=("맑은 고딕", 9, "bold"),
         )
         style.map(
             "Tool.TButton",
@@ -4714,12 +4818,34 @@ class CrowEyesImageViewer(tb.Window):
         style.configure(
             "TCheckbutton", background=t["panel"], foreground=t["fg"],
             indicatorcolor=t["panel_alt"], bordercolor=t["border"], focuscolor=t["accent"],
+            font=t["font"],
         )
         style.map(
             "TCheckbutton", background=[("active", t["panel"])],
             foreground=[("disabled", t["muted"])],
             indicatorcolor=[("selected", t["accent_button"]), ("!selected", t["panel_alt"])],
         )
+        style.configure(
+            "TRadiobutton", background=t["panel"], foreground=t["fg"],
+            indicatorcolor=t["panel_alt"], bordercolor=t["border"], focuscolor=t["accent"],
+            font=t["font"],
+        )
+        style.map(
+            "TRadiobutton", background=[("active", t["panel"])],
+            foreground=[("disabled", t["muted"])],
+            indicatorcolor=[("selected", t["accent_button"]), ("!selected", t["panel_alt"])],
+        )
+        style.configure("TNotebook", background=t["panel"], bordercolor=t["border"], tabmargins=(2, 4, 2, 0))
+        style.configure(
+            "TNotebook.Tab", background=t["panel_alt"], foreground=t["muted"],
+            bordercolor=t["border"], padding=(12, 5), font=("맑은 고딕", 9),
+        )
+        style.map(
+            "TNotebook.Tab",
+            background=[("selected", t["panel"]), ("active", t["select"])],
+            foreground=[("selected", t["fg"]), ("active", t["fg"])],
+        )
+        style.configure("TSeparator", background=t["border"])
         style.configure(
             "TScrollbar", background=t["button"], troughcolor=t["panel_alt"],
             bordercolor=t["border"], arrowcolor=t["fg"],
@@ -4741,8 +4867,8 @@ class CrowEyesImageViewer(tb.Window):
         self.info_text.configure(bg=t["panel_alt"], fg=t["fg"], insertbackground=t["fg"],
                                  selectbackground=t["select"], selectforeground=t["select_fg"],
                                  font=t["font"], highlightthickness=0)
-        self.info_text.tag_configure("label", foreground=t["muted"], font=("Segoe UI Semibold", 8))
-        self.info_text.tag_configure("value", foreground=t["fg"], font=("Segoe UI", 10), spacing3=8)
+        self.info_text.tag_configure("label", foreground=t["muted"], font=("맑은 고딕", 8, "bold"))
+        self.info_text.tag_configure("value", foreground=t["fg"], font=("맑은 고딕", 10), spacing3=8)
         self._info_close_btn.configure(bg=t["panel"], fg=t["muted"], activebackground=t["select"],
                                        activeforeground=t["fg"], highlightthickness=0)
         self._playlist_close_btn.configure(
@@ -4751,6 +4877,7 @@ class CrowEyesImageViewer(tb.Window):
         )
         self._style_canvas_nav_button(self._canvas_prev_btn)
         self._style_canvas_nav_button(self._canvas_next_btn)
+        self._style_zoom_hud()
         if self._grid_canvas is not None:
             self._grid_canvas.configure(bg=t["panel"])
         for menu in getattr(self, "_menus", []):
@@ -4845,6 +4972,8 @@ class CrowEyesImageViewer(tb.Window):
     def toggle_context_bar(self) -> None:
         self._context_visible = not self._context_visible
         self.settings["show_context_bar"] = self._context_visible
+        if hasattr(self, "_context_bar_var"):
+            self._context_bar_var.set(self._context_visible)
         if self._context_visible:
             self.context_bar.grid()
         else:
@@ -4984,14 +5113,47 @@ class CrowEyesImageViewer(tb.Window):
         self._update_canvas_navigation_buttons()
 
     def show_shortcuts(self) -> None:
-        messagebox.showinfo(
-            "CrowEyes 단축키",
-            "Ctrl+O  이미지 열기\nCtrl+Shift+O  폴더 열기\nCtrl+P  인쇄\n"
-            "← / →  이전·다음 이미지\n+ / -  확대·축소\nCtrl+0  1:1\nCtrl+1  화면 맞춤\n"
-            "Ctrl+R / Ctrl+L  회전\nF5  슬라이드쇼\nF8  정보 패널\n"
-            "F11  이미지 전체화면\nSpace  GIF/WebP 재생·일시정지\n"
-            "마우스 휠  이전·다음 이미지 (환경설정에서 확대·축소로 변경)",
-        )
+        from croweyes_dialogs import FittedDialog
+        win = FittedDialog(self, "CrowEyes 단축키 안내", 750)
+        frame = win.body
+        groups = [
+            ("파일 · 보기", [
+                ("Ctrl+O", "이미지 열기"),
+                ("Ctrl+Shift+O", "폴더 열기"),
+                ("Ctrl+S", "다른 이름으로 저장"),
+                ("Ctrl+P", "인쇄"),
+                ("← / → / Home / End", "이전·다음·처음·끝"),
+                ("+ / -", "확대 · 축소"),
+                ("Ctrl+1 / Ctrl+0", "화면 맞춤 / 원본 크기"),
+                ("F5", "슬라이드쇼 재생·정지"),
+                ("Space", "GIF·WebP 재생·정지"),
+                ("F8 / F11", "사진 정보 / 전체 화면"),
+            ]),
+            ("편집 · 정리 · 설정", [
+                ("Ctrl+Z / Ctrl+Y", "실행 취소 / 재실행"),
+                ("Ctrl+R / Ctrl+L", "오른쪽·왼쪽 90° 회전"),
+                ("F2 / Delete", "이름 변경 / 휴지통"),
+                ("Ctrl+C", "선택 파일 복사"),
+                ("Ctrl+,", "환경설정 열기"),
+                ("Esc", "전체 화면·영역 선택·슬라이드쇼 종료"),
+            ]),
+        ]
+        for col, (heading, rows) in enumerate(groups):
+            box = ttk.Frame(frame, style="Panel.TFrame", padding=(0, 0, 12 if col == 0 else 0, 0))
+            box.grid(row=0, column=col, sticky="nsew")
+            frame.columnconfigure(col, weight=1)
+            ttk.Label(box, text=heading, style="Section.TLabel").pack(anchor="w", pady=(0, 6))
+            shortcuts = ttk.Frame(box, style="Panel.TFrame")
+            shortcuts.pack(fill="x")
+            for row, (key, desc) in enumerate(rows):
+                badge = ttk.Label(shortcuts, text=key, anchor="w")
+                badge.tk.call(badge._w, "configure", "-style", "Badge.TLabel")
+                badge.grid(row=row, column=0, sticky="nw", padx=(0, 8), pady=1)
+                label = ttk.Label(shortcuts, text=desc, font=("맑은 고딕", 9), wraplength=188, justify="left")
+                label.grid(row=row, column=1, sticky="nw", pady=1)
+        win.update_idletasks()
+        win._resize()
+        ttk.Button(frame, text="닫기", style="Accent.TButton", command=win.destroy).grid(row=1, column=0, columnspan=2, sticky="e", pady=(10, 0))
 
     def show_preferences(self) -> None:
         win = tk.Toplevel(self)
@@ -5553,18 +5715,34 @@ class CrowEyesImageViewer(tb.Window):
             return False
 
     def show_about(self) -> None:
-        messagebox.showinfo(
-            APP_TITLE,
-            f"{APP_TITLE}\n\n"
-            "CrowEyes는 감상과 탐색에 집중한 데스크톱 이미지 뷰어입니다.\n"
-            "Pillow · tkinter · ttkbootstrap · resvg 기반\n"
-            "Windows 인쇄 · PSD · SVG · EPS(Ghostscript 선택 사항)\n\n"
-            f"2026년 8월 · v{APP_VERSION}\n"
-            "제작: Crow Science Lab\n\n"
-            "무료 배포 · Authenticode 디지털 서명 없음\n"
-            "Windows 실행 차단 안내는 더 보기 메뉴에서 확인할 수 있습니다.\n\n"
-            "F11 이미지 전체화면 · F8 정보 패널 · F5 슬라이드쇼",
-        )
+        from croweyes_dialogs import FittedDialog
+        win = FittedDialog(self, f"{APP_NAME} 정보", 540)
+        frame = win.body
+        header = ttk.Frame(frame, style="Panel.TFrame")
+        header.pack(fill="x", pady=(0, 10))
+        ttk.Label(header, image=self._icons["app"], style="Section.TLabel").pack(side="left", padx=(0, 12))
+        title_box = ttk.Frame(header, style="Panel.TFrame")
+        title_box.pack(side="left", fill="x", expand=True)
+        ttk.Label(title_box, text=APP_TITLE, style="Title.TLabel").pack(anchor="w")
+        ttk.Label(title_box, text="제작: Crow Science Lab · 무료 배포 (Authenticode 서명 없음)", style="Section.TLabel").pack(anchor="w")
+        ttk.Label(
+            frame,
+            text=(
+                "CrowEyes는 감상과 탐색, 안전한 사본 편집에 집중한 Windows 이미지 뷰어입니다.\n"
+                "Pillow · tkinter · ttkbootstrap · resvg 기반\n"
+                "RAW · HEIC · PSD · SVG · EPS · C2PA · 로컬 OCR 및 분할 인쇄 지원"
+            ),
+            wraplength=490, justify="left",
+        ).pack(anchor="w", pady=(0, 12))
+        links = ttk.Frame(frame, style="Panel.TFrame")
+        links.pack(fill="x")
+        ttk.Button(links, text="GitHub 릴리스", command=lambda: webbrowser.open(GITHUB_RELEASE_PAGE_URL)).pack(side="left", padx=(0, 6))
+        ttk.Button(
+            links, text="Microsoft Store",
+            command=lambda: (os.startfile(MICROSOFT_STORE_URI) if os.name == "nt" else webbrowser.open(MICROSOFT_STORE_URL)),
+        ).pack(side="left", padx=(0, 6))
+        ttk.Button(links, text="단축키 안내", command=lambda: (win.destroy(), self.show_shortcuts())).pack(side="left")
+        ttk.Button(links, text="닫기", style="Accent.TButton", command=win.destroy).pack(side="right")
 
     def show_windows_security_help(self) -> None:
         """Explain unsigned-build warnings without encouraging a security bypass."""
@@ -6068,7 +6246,10 @@ class CrowEyesImageViewer(tb.Window):
         if bool(self.settings.get("keep_zoom", False)) and self._view_mode == "custom":
             self.redraw()
         elif bool(self.settings.get("fit_on_open", True)):
-            self.after_idle(self.fit_to_window)
+            if self.canvas.winfo_width() > 1 and self.canvas.winfo_height() > 1:
+                self.fit_to_window()
+            else:
+                self.after_idle(self.fit_to_window)
         else:
             self.zoom = 1.0
             self._view_mode = "actual"
@@ -6334,6 +6515,8 @@ class CrowEyesImageViewer(tb.Window):
         self._clear_canvas_overlay()
         self.canvas.delete("all")
         self._zoom_text_var.set(f"크기 {int(round(self.zoom * 100))}%")
+        if hasattr(self, "_zoom_hud_var"):
+            self._zoom_hud_var.set(f"{int(round(self.zoom * 100))}%")
         if self.display_image is None:
             self._update_canvas_navigation_buttons()
             if self._content_safety_status == BLOCKED:
@@ -6365,7 +6548,12 @@ class CrowEyesImageViewer(tb.Window):
             scaled = self.display_image.resize((w, h), resample)
         except Exception:
             scaled = self.display_image
-        self.tk_image = ImageTk.PhotoImage(scaled)
+        try:
+            self.tk_image = ImageTk.PhotoImage(scaled, master=self)
+        except Exception:
+            fallback = self.display_image.copy()
+            fallback.thumbnail((max(256, cw * 2), max(256, ch * 2)), Image.Resampling.BILINEAR)
+            self.tk_image = ImageTk.PhotoImage(fallback, master=self)
         self.canvas.create_image(cw / 2 + self.offset_x, ch / 2 + self.offset_y,
                                  image=self.tk_image, anchor=tk.CENTER, tags=("display_image",))
         self._update_canvas_navigation_buttons()

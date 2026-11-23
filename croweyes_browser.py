@@ -19,8 +19,8 @@ class FileBrowserMixin:
         self._browser_menu_buttons = []
         for title, icon, attr in [('정렬', 'sort', '_browser_sort_menu'), ('보기', 'view', '_browser_view_menu')]:
             button = ttk.Menubutton(header, text=title, image=self._icons[icon], compound='left',width=0,
-                                    style='Browser.TMenubutton', padding=(3, 3))
-            button.pack(side='left', padx=(5, 0))
+                                    style='Browser.TMenubutton', padding=(2, 2))
+            button.pack(side='left', padx=(3, 0))
             menu = tk.Menu(button, tearoff=False)
             button.configure(menu=menu)
             setattr(self, attr, menu)
@@ -51,7 +51,7 @@ class FileBrowserMixin:
         t=self._theme()
         style=ttk.Style(self)
         style.configure('Browser.TMenubutton', background=t['panel'],foreground=t['fg'],
-                        borderwidth=0, relief='flat', font=('Segoe UI',9),padding=(3,3))
+                        borderwidth=0, relief='flat', font=('맑은 고딕',9),padding=(2,2))
         style.map('Browser.TMenubutton',background=[('active',t['select'])],foreground=[('active',t['select_fg'])])
         for button,icon in getattr(self,'_browser_menu_buttons',[]):
             button.configure(image=self._icons[icon])
@@ -59,7 +59,7 @@ class FileBrowserMixin:
         for attr in ('_browser_sort_menu','_browser_view_menu'):
             menu=getattr(self,attr,None)
             if menu:menu.configure(bg=t['panel'],fg=t['fg'],activebackground=t['select'],
-                                   activeforeground=t['select_fg'],selectcolor=t['accent'],bd=0,font=('Segoe UI',10))
+                                   activeforeground=t['select_fg'],selectcolor=t['accent'],bd=0,font=('맑은 고딕',9))
 
     def toggle_show_hidden(self):
         c=sys.modules[self.__class__.__module__]

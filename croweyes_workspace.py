@@ -59,6 +59,14 @@ class WorkspaceToolbar(ttk.Frame):
         m.add_separator()
         m.add_checkbutton(label='파일 목록 패널',variable=v._playlist_panel_var,command=v.toggle_playlist_panel)
         m.add_checkbutton(label='사진 정보 패널',variable=v._info_panel_var,command=v.toggle_info_panel)
+        if not hasattr(v,'_context_bar_var'):v._context_bar_var=tk.BooleanVar(v,v._context_visible)
+        m.add_checkbutton(label='하단 상태 바',variable=v._context_bar_var,command=v.toggle_context_bar)
+        theme_menu=tk.Menu(m,tearoff=False)
+        v._theme_menu_var=tk.StringVar(v,value=v.settings.get('ui_theme','croweyes_dark'))
+        for key,label in c.THEME_LABELS.items():
+            theme_menu.add_radiobutton(label=label,variable=v._theme_menu_var,value=key,command=lambda k=key:v.set_ui_theme(k))
+        m.add_cascade(label='테마',menu=theme_menu)
+        v._workspace_submenus=[viewing,theme_menu]
         m=menu('편집')
         add(m,'편집 작업 공간',lambda:v.set_workspace('editor'))
         groups=[
@@ -83,10 +91,11 @@ class WorkspaceToolbar(ttk.Frame):
         m.add_separator()
         sorting=tk.Menu(m,tearoff=False);v._fill_sort_menu(sorting)
         m.add_cascade(label='정렬',menu=sorting)
+        v._workspace_submenus.append(sorting)
         m=menu('도구')
         for label,cmd in [('글자 인식 (OCR)',v.ocr_dialog),('영역 글자 인식',v.ocr_region),('정보 색인 · 촬영일 + OCR',v.index_all),('C2PA 출처 확인',v.provenance_dialog),('EXIF·GPS·색상 정보',v.metadata_dialog)]:add(m,label,cmd)
         m=menu('설정')
-        for label,cmd in [('기본 포함 기능 안내',v.extensions_dialog),('보기·성능',v.performance_dialog),('환경설정·콘텐츠 필터',v.show_preferences),('기본 앱 등록',v.show_file_association_dialog),('Windows 실행 차단 안내',v.show_windows_security_help),('업데이트 확인',lambda:v.check_for_updates(manual=True)),('CrowEyes 정보',v.show_about)]:add(m,label,cmd)
+        for label,cmd in [('기본 포함 기능 안내',v.extensions_dialog),('보기·성능',v.performance_dialog),('환경설정·콘텐츠 필터',v.show_preferences),('기본 앱 등록',v.show_file_association_dialog),('Windows 기본 앱 설정 열기',v.open_windows_default_apps),('단축키 안내',v.show_shortcuts),('Windows 실행 차단 안내',v.show_windows_security_help),('업데이트 확인',lambda:v.check_for_updates(manual=True)),('CrowEyes 정보',v.show_about)]:add(m,label,cmd)
 
     def populate(self):
         v=self.viewer;c=core(v)
@@ -98,6 +107,8 @@ class WorkspaceToolbar(ttk.Frame):
         if v._workspace_mode=='editor':
             actions=[('undo','취소','실행 취소 (Ctrl+Z)',v.undo_edit),('redo','재실행','재실행 (Ctrl+Y)',v.redo_edit),('restore','원본','원본 복원',v.restore_original),('rotate_right','회전','오른쪽 회전',lambda:v.rotate(90)),('flip_h','좌우','좌우 반전',v.toggle_flip_h),('flip_v','상하','상하 반전',v.toggle_flip_v),('resize','크기','크기·비율 변경',lambda:v.select_edit_tool('크기·비율')),('copy','영역','영역 클립보드 복사',v.start_region_copy),('adjust','조정','밝기·대비',lambda:v.select_edit_tool('밝기·대비')),('print','인쇄','현재 편집 이미지 인쇄 (Ctrl+P)',v.print_current_image),('annotation','주석','주석: 글자·화살표·사각형',v.annotation_dialog),('highlight','형광펜','형광펜',lambda:v.select_edit_tool('형광펜')),('mosaic','모자이크','모자이크',lambda:v.select_edit_tool('모자이크')),('compare','전후','편집 전후 비교',v.compare_before_after),('save','저장','사본 저장',v.quality_dialog)]
         v._slide_btn=None
+        self._group_breaks={'previous','play'} if v._workspace_mode!='editor' else {'resize','compare'}
+        self._dividers=[]
         for name,label,tip,command in actions:
             callback=command if name=='play' else v._action(command)
             button=c._tool_button(self.buttons,"",tip,callback,0,v._icons['toolbar_'+name])
@@ -110,6 +121,23 @@ class WorkspaceToolbar(ttk.Frame):
         self.after_idle(lambda:self.reflow(self.buttons.winfo_width()))
         if hasattr(v,'slideshow_job'):v._update_slide_button()
 
+    def _paint_dividers(self):
+        for div in self._dividers:
+            div.destroy()
+        self._dividers=[]
+        buttons=self.viewer._toolbar_buttons
+        if self._columns is None or self._columns<len(buttons):return
+        color=self.viewer._theme()['border']
+        for b in buttons:
+            if b._croweyes_action in self._group_breaks:
+                x=b.winfo_x()-2
+                y=b.winfo_y()+6
+                h=max(16,b.winfo_height()-12)
+                if x>2:
+                    div=tk.Frame(self.buttons,width=1,height=h,bg=color,bd=0,highlightthickness=0)
+                    div.place(x=x,y=y,width=1,height=h)
+                    self._dividers.append(div)
+
     def reflow(self,width):
         if not self.winfo_exists() or not self.viewer._toolbar_buttons:return
         buttons=self.viewer._toolbar_buttons
@@ -120,7 +148,9 @@ class WorkspaceToolbar(ttk.Frame):
         rows=(15+cols-1)//cols
         self.configure(height=max(48,rows*(max(b.winfo_reqheight() for b in buttons)+6),self.viewer._brand_label.winfo_reqheight(),self.viewer._brand_logo_label.winfo_reqheight(),self.mode_switch.winfo_reqheight())+8)
         for i in range(16):self.buttons.columnconfigure(i,minsize=tile if i<cols else 0)
-        for i,b in enumerate(buttons):b.grid(row=i//cols,column=i%cols,padx=2,pady=3,sticky='ew')
+        for i,b in enumerate(buttons):
+            b.grid(row=i//cols,column=i%cols,padx=2,pady=3,sticky='ew')
+        self.after_idle(self._paint_dividers)
 
 
 class WorkspaceMixin(FileBrowserMixin,DockMixin,InlineEditorMixin):
@@ -169,6 +199,13 @@ class WorkspaceMixin(FileBrowserMixin,DockMixin,InlineEditorMixin):
     def _apply_theme(self):
         super()._apply_theme()
         self._style_browser_menus()
+        t=self._theme()
+        for m in list(getattr(self,'_workspace_menus',{}).values())+list(getattr(self,'_workspace_submenus',[])):
+            try:m.configure(bg=t['panel'],fg=t['fg'],activebackground=t['select'],activeforeground=t['select_fg'],selectcolor=t['accent'],bd=0,font=('맑은 고딕',9))
+            except tk.TclError:pass
+        if hasattr(self,'_theme_menu_var'):self._theme_menu_var.set(self.settings.get('ui_theme','croweyes_dark'))
+        if hasattr(self.toolbar,'_paint_dividers') and self.toolbar._columns:
+            self.toolbar._paint_dividers()
         def chrome(widget,frame_style,label_style):
             if isinstance(widget,ttk.Frame):widget.tk.call(widget._w,'configure','-style',frame_style)
             elif isinstance(widget,ttk.Label):widget.tk.call(widget._w,'configure','-style',label_style)

@@ -5,33 +5,57 @@ from tkinter import ttk
 
 class ModeSwitch(tk.Canvas):
     def __init__(self, master, viewer):
-        super().__init__(master,width=154,height=42,highlightthickness=0,cursor='hand2',takefocus=True)
+        super().__init__(master,width=148,height=38,highlightthickness=0,cursor='hand2',takefocus=True)
         self.viewer=viewer
-        self.bind('<Button-1>',lambda e:viewer.set_workspace('viewer' if e.x<77 else 'editor'))
-        self.bind('<B1-Motion>',lambda e:viewer.set_workspace('viewer' if e.x<77 else 'editor'))
-        self.bind('<Left>',lambda e:viewer.set_workspace('viewer'))
-        self.bind('<Right>',lambda e:viewer.set_workspace('editor'))
-        self.bind('<space>',lambda e:viewer.set_workspace('editor' if viewer._workspace_mode=='viewer' else 'viewer'))
+        self._hover_mode=None
+        self.bind('<Button-1>',lambda e:viewer.set_workspace('viewer' if e.x<74 else 'editor'))
+        self.bind('<B1-Motion>',lambda e:viewer.set_workspace('viewer' if e.x<74 else 'editor'))
+        self.bind('<Motion>',self._on_motion)
+        self.bind('<Leave>',lambda e:self._set_hover(None))
+        self.bind('<Left>',lambda e:self._select_mode_with_key('viewer'))
+        self.bind('<Right>',lambda e:self._select_mode_with_key('editor'))
+        self.bind('<space>',lambda e:self._select_mode_with_key('editor' if viewer._workspace_mode=='viewer' else 'viewer'))
         self.bind('<Configure>',lambda e:self.redraw())
         self.redraw()
 
+    def _select_mode_with_key(self, mode):
+        self.viewer.set_workspace(mode)
+        return 'break'
+
+    def _set_hover(self, mode):
+        if mode != self._hover_mode:
+            self._hover_mode = mode
+            self.redraw()
+
+    def _on_motion(self, event):
+        self._set_hover('viewer' if event.x < 74 else 'editor')
+
     def redraw(self):
         t=self.viewer._theme();self.configure(bg=t['toolbar']);self.delete('all')
-        def pill(x1,y1,x2,y2,color):
+        def pill(x1,y1,x2,y2,color,outline=None):
             r=(y2-y1)/2
-            self.create_rectangle(x1+r,y1,x2-r,y2,fill=color,outline=color)
-            self.create_oval(x1,y1,x1+2*r,y2,fill=color,outline=color)
-            self.create_oval(x2-2*r,y1,x2,y2,fill=color,outline=color)
-        pill(2,5,152,39,'#111923');pill(3,4,151,36,'#465365');pill(5,6,149,34,'#202A38')
-        x=7 if self.viewer._workspace_mode=='viewer' else 78
-        pill(x,7,x+69,33,'#3277B3');pill(x+1,8,x+68,21,'#579CD5')
-        for cx,label,mode in [(41,'뷰어','viewer'),(113,'편집','editor')]:
+            out=outline or color
+            self.create_rectangle(x1+r,y1,x2-r,y2,fill=color,outline='')
+            self.create_oval(x1,y1,x1+2*r,y2,fill=color,outline='')
+            self.create_oval(x2-2*r,y1,x2,y2,fill=color,outline='')
+            if outline:
+                self.create_arc(x1,y1,x1+2*r,y2,start=90,extent=180,style='arc',outline=out,width=1)
+                self.create_arc(x2-2*r,y1,x2,y2,start=270,extent=180,style='arc',outline=out,width=1)
+                self.create_line(x1+r,y1,x2-r,y1,fill=out,width=1)
+                self.create_line(x1+r,y2,x2-r,y2,fill=out,width=1)
+        pill(2,4,146,34,t['panel_alt'],outline=t['border'])
+        if self._hover_mode and self._hover_mode != self.viewer._workspace_mode:
+            hx=5 if self._hover_mode=='viewer' else 75
+            pill(hx,7,hx+68,31,t['select'])
+        x=5 if self.viewer._workspace_mode=='viewer' else 75
+        pill(x,7,x+68,31,t['accent_button'],outline=t['accent'])
+        for cx,label,mode in [(39,'뷰어','viewer'),(109,'편집','editor')]:
             active=mode==self.viewer._workspace_mode
-            self.create_text(cx-5,20,text=label,fill='#FFFFFF' if active else '#ABB8C8',font=('맑은 고딕',10,'bold'))
+            self.create_text(cx-4,19,text=label,fill='#FFFFFF' if active else t['muted'],font=('맑은 고딕',10,'bold'))
             if active:
-                for r,color in [(6,'#316E7C'),(4,'#49B9BA'),(2,'#B2FFF3')]:
-                    self.create_oval(cx+22-r,20-r,cx+22+r,20+r,fill=color,outline=color)
-            else:self.create_oval(cx+20,18,cx+24,22,fill='#627081',outline='')
+                self.create_oval(cx+19,16,cx+25,22,fill=t['accent_hi'],outline='')
+            else:
+                self.create_oval(cx+20,17,cx+24,21,fill=t['border'],outline='')
 
 
 class DockSurface(ttk.Frame):

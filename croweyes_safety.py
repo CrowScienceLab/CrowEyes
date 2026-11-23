@@ -18,7 +18,8 @@ import threading
 import time
 from typing import Callable, Iterable, List, Optional, Sequence, Tuple, Union
 
-from PIL import Image, ImageOps, ImageSequence
+from PIL import Image, ImageOps
+from croweyes_decode import JPEG_FORMATS, animation_frame_count, check_image_size
 
 
 SAFETY_OFF = "off"
@@ -221,17 +222,17 @@ def load_safety_samples(
 
     samples: List[Image.Image] = []
     with Image.open(path) as source:
-        frame_count = max(1, int(getattr(source, "n_frames", 1) or 1))
-        positions = _sample_positions(frame_count, max_frames)
-        for index in positions:
+        check_image_size(source, preview=True)
+        frame_count = animation_frame_count(source)
+        for index in _sample_positions(frame_count, max_frames):
             if frame_count > 1:
                 source.seek(index)
-            if index == 0 and (source.format or "").upper() in {"JPEG", "MPO"}:
+            if source.format in JPEG_FORMATS:
                 try:
-                    source.draft("RGB", (MODEL_INPUT_SIZE, MODEL_INPUT_SIZE))
-                except Exception:
+                    source.draft(source.mode, (MODEL_INPUT_SIZE, MODEL_INPUT_SIZE))
+                except (OSError, ValueError):
                     pass
-            samples.append(_small_rgb(source.copy()))
+            samples.append(_small_rgb(source))
     if not samples:
         raise OSError("안전 판정용 이미지를 만들지 못했습니다.")
     return samples
